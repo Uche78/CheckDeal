@@ -1,0 +1,25 @@
+INSERT INTO brokers (
+  id,
+  auth_id,
+  email,
+  full_name,
+  phone,
+  brokerage_name,
+  license_number,
+  notification_email,
+  notification_sms
+) VALUES
+  (
+    'c7c2c586-a988-4375-866c-ee7281ff9545'::uuid,
+    'c7c2c586-a988-4375-866c-ee7281ff9545'::uuid,
+    'john.smith@example.com',
+    'John Smith',
+    '+1-416-555-0101',
+    'Toronto Mortgage Brokers Inc.',
+    'MB-ON-12345',
+    true,
+    false
+  );
+
+-- Keep the other two brokers commented out for now
+-- We'll add them later if needed
