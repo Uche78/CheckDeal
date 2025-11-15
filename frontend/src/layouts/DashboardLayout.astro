@@ -1,0 +1,153 @@
+---
+interface Props {
+  title: string;
+}
+
+const { title } = Astro.props;
+---
+
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>{title} | DealCheck</title>
+  </head>
+  <body class="bg-gray-50">
+    <div class="flex h-screen overflow-hidden">
+      <!-- Sidebar -->
+      <aside class="hidden md:flex md:flex-shrink-0">
+        <div class="flex flex-col w-64 bg-white border-r border-gray-200">
+          <!-- Logo -->
+          <div class="flex items-center h-16 px-6 border-b border-gray-200">
+            <h1 class="text-2xl font-bold text-primary-900">DealCheck</h1>
+          </div>
+
+          <!-- Navigation -->
+          <nav class="flex-1 px-4 py-6 space-y-1 overflow-y-auto">
+            <a            
+              href="/dashboard"
+              class="flex items-center px-4 py-3 text-sm font-medium text-gray-900 bg-primary-50 rounded-lg hover:bg-primary-100"
+            >
+              <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"
+                ></path>
+              </svg>
+              Dashboard
+            </a>
+
+
+           <a            
+              href="/applications"
+              class="flex items-center px-4 py-3 text-sm font-medium text-gray-700 rounded-lg hover:bg-gray-100"
+            >
+              <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                ></path>
+              </svg>
+              Applications
+            </a>
+
+            <a
+              href="/documents"
+              class="flex items-center px-4 py-3 text-sm font-medium text-gray-700 rounded-lg hover:bg-gray-100"
+            >
+              <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"
+                ></path>
+              </svg>
+              Documents
+            </a>
+
+            <a
+              href="/analysis"
+              class="flex items-center px-4 py-3 text-sm font-medium text-gray-700 rounded-lg hover:bg-gray-100"
+            >
+              <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"
+                ></path>
+              </svg>
+              Analysis
+            </a>
+          </nav>
+
+          <!-- User Section -->
+          <div class="flex-shrink-0 px-4 py-4 border-t border-gray-200">
+            <div class="flex items-center">
+              <div class="flex-shrink-0">
+                <div class="w-10 h-10 rounded-full bg-primary-600 flex items-center justify-center text-white font-medium">
+                  JD
+                </div>
+              </div>
+              <div class="ml-3">
+                <p class="text-sm font-medium text-gray-900">John Doe</p>
+                <a href="/login" class="text-xs text-gray-500 hover:text-gray-700">Sign out</a>
+              </div>
+            </div>
+          </div>
+        </div>
+      </aside>
+
+      <!-- Main Content -->
+      <div class="flex flex-col flex-1 overflow-hidden">
+        <!-- Top Bar -->
+        <header class="flex items-center justify-between h-16 px-6 bg-white border-b border-gray-200">
+          <div class="flex items-center">
+            <!-- Mobile menu button -->
+            <button class="md:hidden text-gray-500 hover:text-gray-700">
+              <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M4 6h16M4 12h16M4 18h16"
+                ></path>
+              </svg>
+            </button>
+            <h2 class="ml-4 text-xl font-semibold text-gray-900 md:ml-0">{title}</h2>
+          </div>
+
+          <div class="flex items-center space-x-4">
+            <!-- Notifications -->
+            <button class="text-gray-500 hover:text-gray-700">
+              <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"
+                ></path>
+              </svg>
+            </button>
+
+            <!-- Quick Actions -->
+            <a href="/applications/new" class="btn btn-primary">
+              + New Application
+            </a>
+          </div>
+        </header>
+
+        <!-- Page Content -->
+        <main class="flex-1 overflow-y-auto">
+          <slot />
+        </main>
+      </div>
+    </div>
+  </body>
+</html>
