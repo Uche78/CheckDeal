@@ -1,0 +1,32 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import SignupForm from '../components/auth/SignupForm.tsx';
+---
+
+<BaseLayout title="Sign Up">
+  <div class="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary-50 to-primary-100 py-12 px-4 sm:px-6 lg:px-8">
+    <div class="max-w-md w-full">
+      <div class="text-center mb-8">
+        <h1 class="text-4xl font-bold text-primary-900 mb-2">
+          Create Account
+        </h1>
+        <p class="text-gray-600">
+          Join DealCheck and streamline your mortgage process
+        </p>
+      </div>
+
+      <div class="bg-white rounded-lg shadow-lg p-8">
+        <SignupForm client:only="react" />
+
+        <div class="mt-6 text-center">
+          <p class="text-sm text-gray-600">
+            Already have an account?{' '}
+            <a href="/login" class="text-primary-600 hover:text-primary-700 font-medium">
+              Sign in
+            </a>
+          </p>
+        </div>
+      </div>
+    </div>
+  </div>
+</BaseLayout>

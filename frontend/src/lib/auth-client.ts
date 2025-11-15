@@ -1,4 +1,5 @@
 import type { User } from '@supabase/supabase-js';
+import { supabase } from './supabase-client';
 
 // Lazy load Supabase
 async function getSupabase() {
@@ -110,6 +111,21 @@ export async function resetPassword(email: string) {
     return { error: null };
   } catch (error) {
     console.error('Reset password error:', error);
+    return { error };
+  }
+}
+
+// Update password
+export async function updatePassword(newPassword: string) {
+  try {
+    const { error } = await supabase.auth.updateUser({
+      password: newPassword,
+    });
+
+    if (error) throw error;
+    return { error: null };
+  } catch (error) {
+    console.error('Update password error:', error);
     return { error };
   }
 }
