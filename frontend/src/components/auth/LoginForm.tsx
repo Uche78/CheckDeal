@@ -52,11 +52,37 @@ export default function LoginForm() {
         return;
       }
 
+if (user) {
+  console.log('Login successful!', user);
+  
+  // Check for redirect parameter
+  const urlParams = new URLSearchParams(window.location.search);
+  const redirect = urlParams.get('redirect');
+  
+  // Redirect to original destination or dashboard
+  window.location.href = redirect || '/dashboard';
+}      if (user) {
+        console.log('Login successful!', user);
+        // Redirect to dashboard
+        window.location.href = '/dashboard';
+      }
       if (user) {
         console.log('Login successful!', user);
         // Redirect to dashboard
         window.location.href = '/dashboard';
       }
+
+if (user) {
+  console.log('Login successful!', user);
+  
+  // Check for redirect parameter
+  const urlParams = new URLSearchParams(window.location.search);
+  const redirect = urlParams.get('redirect');
+  
+  // Redirect to original destination or dashboard
+  window.location.href = redirect || '/dashboard';
+}
+
     } catch (error) {
       console.error('Login error:', error);
       setErrors({ general: 'An unexpected error occurred. Please try again.' });

@@ -1,0 +1,46 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import ProtectedRoute from '../../components/auth/ProtectedRoute.tsx';
+---
+
+<BaseLayout title="Dashboard">
+  <ProtectedRoute client:only="react">
+    <div class="min-h-screen bg-gray-50">
+      <div class="max-w-7xl mx-auto py-12 px-4 sm:px-6 lg:px-8">
+        <div class="bg-white shadow rounded-lg p-8">
+          <h1 class="text-3xl font-bold text-gray-900 mb-4">
+            Dashboard
+          </h1>
+          <p class="text-gray-600 mb-6">
+            Welcome to your DealCheck dashboard! This is a protected page.
+          </p>
+          
+          <div class="bg-success-50 border border-success-200 text-success-700 px-4 py-3 rounded-lg mb-6">
+            <p class="font-medium">✅ Authentication Working!</p>
+            <p class="text-sm mt-1">You are successfully logged in and viewing a protected page.</p>
+          </div>
+
+          <div class="space-y-4">
+            <div class="border-l-4 border-primary-500 bg-primary-50 p-4">
+              <p class="text-sm text-primary-700">
+                <strong>Sprint 1 Complete!</strong> All authentication features are working:
+              </p>
+              <ul class="mt-2 text-sm text-primary-600 list-disc list-inside">
+                <li>Login</li>
+                <li>Signup</li>
+                <li>Password Reset</li>
+                <li>Protected Routes</li>
+              </ul>
+            </div>
+
+            <div class="mt-6">
+              <a href="/login" class="btn btn-outline">
+                Sign Out (Test)
+              </a>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </ProtectedRoute>
+</BaseLayout>
