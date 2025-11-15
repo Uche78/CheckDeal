@@ -1,0 +1,100 @@
+---
+// Mock data - will be replaced with real data from Supabase later
+const recentActivities = [
+  {
+    id: 1,
+    type: 'application_submitted',
+    applicantName: 'John Smith',
+    message: 'New application submitted',
+    time: '2 hours ago',
+    status: 'pending',
+  },
+  {
+    id: 2,
+    type: 'document_uploaded',
+    applicantName: 'Sarah Johnson',
+    message: 'Pay stub uploaded',
+    time: '4 hours ago',
+    status: 'in_progress',
+  },
+  {
+    id: 3,
+    type: 'application_approved',
+    applicantName: 'Michael Brown',
+    message: 'Application approved',
+    time: '1 day ago',
+    status: 'approved',
+  },
+  {
+    id: 4,
+    type: 'fraud_detected',
+    applicantName: 'Jane Davis',
+    message: 'Potential fraud detected',
+    time: '2 days ago',
+    status: 'flagged',
+  },
+  {
+    id: 5,
+    type: 'application_submitted',
+    applicantName: 'Robert Wilson',
+    message: 'New application submitted',
+    time: '3 days ago',
+    status: 'pending',
+  },
+];
+
+const statusColors = {
+  pending: 'bg-yellow-100 text-yellow-800',
+  in_progress: 'bg-blue-100 text-blue-800',
+  approved: 'bg-green-100 text-green-800',
+  flagged: 'bg-red-100 text-red-800',
+};
+
+const activityIcons = {
+  application_submitted: 'M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z',
+  document_uploaded: 'M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z',
+  application_approved: 'M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z',
+  fraud_detected: 'M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z',
+};
+---
+
+<div class="bg-white rounded-lg shadow-sm border border-gray-200">
+  <div class="px-6 py-4 border-b border-gray-200">
+    <h3 class="text-lg font-semibold text-gray-900">Recent Activity</h3>
+  </div>
+  <div class="divide-y divide-gray-200">
+    {recentActivities.map((activity) => (
+      <div class="px-6 py-4 hover:bg-gray-50 transition-colors">
+        <div class="flex items-start">
+          <div class="flex-shrink-0">
+            <div class="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center">
+              <svg class="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path 
+                  stroke-linecap="round" 
+                  stroke-linejoin="round" 
+                  stroke-width="2" 
+                  d={activityIcons[activity.type]}
+                ></path>
+              </svg>
+            </div>
+          </div>
+          <div class="ml-4 flex-1">
+            <div class="flex items-center justify-between">
+              <p class="text-sm font-medium text-gray-900">{activity.applicantName}</p>
+              <span class={`px-2 py-1 text-xs font-medium rounded-full ${statusColors[activity.status]}`}>
+                {activity.status.replace('_', ' ')}
+              </span>
+            </div>
+            <p class="text-sm text-gray-600 mt-1">{activity.message}</p>
+            <p class="text-xs text-gray-500 mt-1">{activity.time}</p>
+          </div>
+        </div>
+      </div>
+    ))}
+  </div>
+  <div class="px-6 py-4 border-t border-gray-200">
+    <a href="/applications" class="text-sm font-medium text-primary-600 hover:text-primary-700">
+      View all activity →
+    </a>
+  </div>
+</div>

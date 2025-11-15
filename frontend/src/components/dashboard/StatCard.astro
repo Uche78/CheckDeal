@@ -1,0 +1,52 @@
+---
+interface Props {
+  title: string;
+  value: string | number;
+  icon: string;
+  trend?: {
+    value: string;
+    isPositive: boolean;
+  };
+  color?: 'primary' | 'success' | 'warning' | 'danger';
+}
+
+const { title, value, icon, trend, color = 'primary' } = Astro.props;
+
+const colorClasses = {
+  primary: 'bg-primary-50 text-primary-600',
+  success: 'bg-green-50 text-green-600',
+  warning: 'bg-yellow-50 text-yellow-600',
+  danger: 'bg-red-50 text-red-600',
+};
+---
+
+<div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6 hover:shadow-md transition-shadow">
+  <div class="flex items-center justify-between">
+    <div class="flex-1">
+      <p class="text-sm font-medium text-gray-600 mb-1">{title}</p>
+      <p class="text-3xl font-bold text-gray-900">{value}</p>
+      {trend ? (
+        <div class="flex items-center mt-2">
+          {trend.isPositive ? (
+            <svg class="w-4 h-4 text-green-500 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 10l7-7m0 0l7 7m-7-7v18"></path>
+            </svg>
+          ) : (
+            <svg class="w-4 h-4 text-red-500 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 14l-7 7m0 0l-7-7m7 7V3"></path>
+            </svg>
+          )}
+          <span class={trend.isPositive ? 'text-sm font-medium text-green-600' : 'text-sm font-medium text-red-600'}>
+            {trend.value}
+          </span>
+          <span class="text-sm text-gray-500 ml-1">vs last month</span>
+        </div>
+      ) : null}
+    </div>
+    <div class={`w-12 h-12 rounded-lg ${colorClasses[color]} flex items-center justify-center flex-shrink-0`}>
+      <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d={icon}></path>
+      </svg>
+    </div>
+  </div>
+</div>
