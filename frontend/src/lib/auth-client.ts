@@ -1,10 +1,49 @@
-import { supabase } from './supabase-client';
 import type { User } from '@supabase/supabase-js';
+
+// Lazy load Supabase
+async function getSupabase() {
+  const { createClient } = await import('@supabase/supabase-js');
+  
+  const supabaseUrl = import.meta.env.PUBLIC_SUPABASE_URL;
+  const supabaseAnonKey = import.meta.env.PUBLIC_SUPABASE_ANON_KEY;
+
+  if (!supabaseUrl || !supabaseAnonKey) {
+    throw new Error('Missing Supabase environment variables');
+  }
+
+  return createClient(supabaseUrl, supabaseAnonKey, {
+    auth: {
+      autoRefreshToken: true,
+      persistSession: true,
+      detectSessionInUrl: true,
+    },
+  });
+}
+
+// Sign in with email and password
+export async function signIn(email: string, password: string) {
+  try {
+    const supabase = await getSupabase();
+    
+    const { data, error } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+    });
+
+    if (error) throw error;
+
+    return { user: data.user, session: data.session, error: null };
+  } catch (error) {
+    console.error('Sign in error:', error);
+    return { user: null, session: null, error };
+  }
+}
 
 // Sign up with email and password
 export async function signUp(email: string, password: string, fullName: string) {
   try {
-    // Create auth user
+    const supabase = await getSupabase();
+    
     const { data: authData, error: authError } = await supabase.auth.signUp({
       email,
       password,
@@ -18,7 +57,6 @@ export async function signUp(email: string, password: string, fullName: string) 
     if (authError) throw authError;
     if (!authData.user) throw new Error('No user returned from signup');
 
-    // Create broker profile
     const { error: profileError } = await supabase.from('brokers').insert({
       auth_id: authData.user.id,
       email: authData.user.email!,
@@ -34,26 +72,10 @@ export async function signUp(email: string, password: string, fullName: string) 
   }
 }
 
-// Sign in with email and password
-export async function signIn(email: string, password: string) {
-  try {
-    const { data, error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
-
-    if (error) throw error;
-
-    return { user: data.user, session: data.session, error: null };
-  } catch (error) {
-    console.error('Sign in error:', error);
-    return { user: null, session: null, error };
-  }
-}
-
 // Sign out
 export async function signOut() {
   try {
+    const supabase = await getSupabase();
     const { error } = await supabase.auth.signOut();
     if (error) throw error;
     return { error: null };
@@ -66,6 +88,7 @@ export async function signOut() {
 // Get current user
 export async function getCurrentUser(): Promise<User | null> {
   try {
+    const supabase = await getSupabase();
     const { data: { user }, error } = await supabase.auth.getUser();
     if (error) throw error;
     return user;
@@ -75,21 +98,10 @@ export async function getCurrentUser(): Promise<User | null> {
   }
 }
 
-// Get current session
-export async function getSession() {
-  try {
-    const { data: { session }, error } = await supabase.auth.getSession();
-    if (error) throw error;
-    return session;
-  } catch (error) {
-    console.error('Get session error:', error);
-    return null;
-  }
-}
-
 // Reset password
 export async function resetPassword(email: string) {
   try {
+    const supabase = await getSupabase();
     const { error } = await supabase.auth.resetPasswordForEmail(email, {
       redirectTo: `${window.location.origin}/reset-password`,
     });
@@ -100,25 +112,4 @@ export async function resetPassword(email: string) {
     console.error('Reset password error:', error);
     return { error };
   }
-}
-
-// Update password
-export async function updatePassword(newPassword: string) {
-  try {
-    const { error } = await supabase.auth.updateUser({
-      password: newPassword,
-    });
-
-    if (error) throw error;
-    return { error: null };
-  } catch (error) {
-    console.error('Update password error:', error);
-    return { error };
-  }
-}
-
-// Check if user is authenticated
-export async function isAuthenticated(): Promise<boolean> {
-  const session = await getSession();
-  return !!session;
 }
