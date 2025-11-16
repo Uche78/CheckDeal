@@ -1,0 +1,22 @@
+---
+import DashboardLayout from '../../../layouts/DashboardLayout.astro';
+import ProtectedRoute from '../../../components/auth/ProtectedRoute.tsx';
+import ApplicationDetails from '../../../components/applications/ApplicationDetails.tsx';
+
+// Enable server-side rendering for this dynamic route
+export const prerender = false;
+
+// Get the application ID from the URL
+const { id } = Astro.params;
+
+// Set page title
+const title = `Application #${id} - DealCheck`;
+---
+
+<DashboardLayout title={title}>
+  <ProtectedRoute client:only="react">
+    <div class="p-6">
+      <ApplicationDetails applicationId={id} client:load />
+    </div>
+  </ProtectedRoute>
+</DashboardLayout>
