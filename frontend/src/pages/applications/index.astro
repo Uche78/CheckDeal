@@ -1,18 +1,7 @@
 ---
 import DashboardLayout from '../../layouts/DashboardLayout.astro';
 import ProtectedRoute from '../../components/auth/ProtectedRoute.tsx';
-import ApplicationsTable from '../../components/applications/ApplicationsTable.astro';
-import StatusBadge from '../../components/applications/StatusBadge.astro';
-
-// Summary stats - mock data
-const summaryStats = {
-  total: 8,
-  pending: 2,
-  in_progress: 2,
-  approved: 2,
-  denied: 1,
-  flagged: 1,
-};
+import ApplicationsFilter from '../../components/applications/ApplicationsFilter.tsx';
 ---
 
 <DashboardLayout title="Applications">
@@ -31,110 +20,8 @@ const summaryStats = {
         </div>
       </div>
 
-      <!-- Summary Stats -->
-      <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-6">
-        <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
-          <div class="text-sm text-gray-600 mb-1">Total</div>
-          <div class="text-2xl font-bold text-gray-900">{summaryStats.total}</div>
-        </div>
-        <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
-          <div class="text-sm text-gray-600 mb-1">Pending</div>
-          <div class="text-2xl font-bold text-yellow-600">{summaryStats.pending}</div>
-        </div>
-        <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
-          <div class="text-sm text-gray-600 mb-1">In Progress</div>
-          <div class="text-2xl font-bold text-blue-600">{summaryStats.in_progress}</div>
-        </div>
-        <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
-          <div class="text-sm text-gray-600 mb-1">Approved</div>
-          <div class="text-2xl font-bold text-green-600">{summaryStats.approved}</div>
-        </div>
-        <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
-          <div class="text-sm text-gray-600 mb-1">Denied</div>
-          <div class="text-2xl font-bold text-red-600">{summaryStats.denied}</div>
-        </div>
-        <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
-          <div class="text-sm text-gray-600 mb-1">Flagged</div>
-          <div class="text-2xl font-bold text-orange-600">{summaryStats.flagged}</div>
-        </div>
-      </div>
-
-      <!-- Filters & Search -->
-      <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-4 mb-6">
-        <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
-          <!-- Search -->
-          <div class="md:col-span-2">
-            <label for="search" class="block text-sm font-medium text-gray-700 mb-2">
-              Search
-            </label>
-            <div class="relative">
-              <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                <svg class="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
-                </svg>
-              </div>
-              <input
-                type="text"
-                id="search"
-                class="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-primary-500 focus:border-primary-500"
-                placeholder="Search by name, address, or ID..."
-              />
-            </div>
-          </div>
-
-          <!-- Status Filter -->
-          <div>
-            <label for="status" class="block text-sm font-medium text-gray-700 mb-2">
-              Status
-            </label>
-            <select
-              id="status"
-              class="block w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-primary-500 focus:border-primary-500"
-            >
-              <option value="">All Statuses</option>
-              <option value="pending">Pending</option>
-              <option value="in_progress">In Progress</option>
-              <option value="approved">Approved</option>
-              <option value="denied">Denied</option>
-              <option value="flagged">Flagged</option>
-            </select>
-          </div>
-
-          <!-- Date Filter -->
-          <div>
-            <label for="date" class="block text-sm font-medium text-gray-700 mb-2">
-              Date Range
-            </label>
-            <select
-              id="date"
-              class="block w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-primary-500 focus:border-primary-500"
-            >
-              <option value="">All Time</option>
-              <option value="today">Today</option>
-              <option value="week">This Week</option>
-              <option value="month">This Month</option>
-              <option value="quarter">This Quarter</option>
-            </select>
-          </div>
-        </div>
-
-        <!-- Active Filters -->
-        <div class="mt-4 flex items-center space-x-2">
-          <span class="text-sm text-gray-600">Active filters:</span>
-          <button class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-primary-100 text-primary-800">
-            All Statuses
-            <svg class="ml-1 h-3 w-3" fill="currentColor" viewBox="0 0 20 20">
-              <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd" />
-            </svg>
-          </button>
-          <button class="text-sm text-primary-600 hover:text-primary-700 font-medium">
-            Clear all filters
-          </button>
-        </div>
-      </div>
-
-      <!-- Applications Table -->
-      <ApplicationsTable />
+      <!-- Interactive Filter Component -->
+      <ApplicationsFilter client:load />
     </div>
   </ProtectedRoute>
 </DashboardLayout>
