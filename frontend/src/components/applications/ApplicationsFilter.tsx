@@ -1,110 +1,39 @@
-import { useState, useMemo } from 'react';
-
-interface Application {
-  id: string;
-  applicantName: string;
-  propertyAddress: string;
-  loanAmount: number;
-  status: 'pending' | 'in_progress' | 'approved' | 'denied' | 'flagged';
-  submittedDate: string;
-  lastUpdated: string;
-}
-
-const MOCK_APPLICATIONS: Application[] = [
-  {
-    id: '1',
-    applicantName: 'John Smith',
-    propertyAddress: '123 Main St, Toronto, ON',
-    loanAmount: 450000,
-    status: 'pending',
-    submittedDate: '2024-11-10',
-    lastUpdated: '2024-11-15',
-  },
-  {
-    id: '2',
-    applicantName: 'Sarah Johnson',
-    propertyAddress: '456 Oak Ave, Mississauga, ON',
-    loanAmount: 625000,
-    status: 'in_progress',
-    submittedDate: '2024-11-08',
-    lastUpdated: '2024-11-14',
-  },
-  {
-    id: '3',
-    applicantName: 'Michael Brown',
-    propertyAddress: '789 Elm St, Brampton, ON',
-    loanAmount: 380000,
-    status: 'approved',
-    submittedDate: '2024-11-05',
-    lastUpdated: '2024-11-13',
-  },
-  {
-    id: '4',
-    applicantName: 'Emily Davis',
-    propertyAddress: '321 Maple Dr, Vaughan, ON',
-    loanAmount: 550000,
-    status: 'pending',
-    submittedDate: '2024-11-12',
-    lastUpdated: '2024-11-15',
-  },
-  {
-    id: '5',
-    applicantName: 'Robert Wilson',
-    propertyAddress: '654 Pine Rd, Markham, ON',
-    loanAmount: 720000,
-    status: 'in_progress',
-    submittedDate: '2024-11-07',
-    lastUpdated: '2024-11-14',
-  },
-  {
-    id: '6',
-    applicantName: 'Jane Martinez',
-    propertyAddress: '987 Cedar Ln, Richmond Hill, ON',
-    loanAmount: 495000,
-    status: 'flagged',
-    submittedDate: '2024-11-09',
-    lastUpdated: '2024-11-13',
-  },
-  {
-    id: '7',
-    applicantName: 'David Lee',
-    propertyAddress: '147 Birch Ct, Ajax, ON',
-    loanAmount: 425000,
-    status: 'approved',
-    submittedDate: '2024-11-03',
-    lastUpdated: '2024-11-10',
-  },
-  {
-    id: '8',
-    applicantName: 'Lisa Anderson',
-    propertyAddress: '258 Spruce Way, Pickering, ON',
-    loanAmount: 685000,
-    status: 'denied',
-    submittedDate: '2024-11-01',
-    lastUpdated: '2024-11-12',
-  },
-];
+import { useState, useEffect, useMemo } from 'react';
+import { getApplicationsWithBorrowers, subscribeToApplications } from '../../lib/supabase/applications';
+import type { ApplicationWithBorrowers } from '../../lib/types/database';
 
 const statusConfig = {
-  pending: {
-    label: 'Pending',
+  draft: {
+    label: 'Draft',
+    classes: 'bg-gray-100 text-gray-800 border-gray-200',
+  },
+  collecting: {
+    label: 'Collecting',
     classes: 'bg-yellow-100 text-yellow-800 border-yellow-200',
   },
-  in_progress: {
-    label: 'In Progress',
+  organized: {
+    label: 'Organized',
     classes: 'bg-blue-100 text-blue-800 border-blue-200',
+  },
+  analyzed: {
+    label: 'Analyzed',
+    classes: 'bg-purple-100 text-purple-800 border-purple-200',
+  },
+  submitted: {
+    label: 'Submitted',
+    classes: 'bg-indigo-100 text-indigo-800 border-indigo-200',
   },
   approved: {
     label: 'Approved',
     classes: 'bg-green-100 text-green-800 border-green-200',
   },
-  denied: {
-    label: 'Denied',
+  rejected: {
+    label: 'Rejected',
     classes: 'bg-red-100 text-red-800 border-red-200',
   },
-  flagged: {
-    label: 'Flagged',
-    classes: 'bg-orange-100 text-orange-800 border-orange-200',
+  complete: {
+    label: 'Complete',
+    classes: 'bg-green-100 text-green-800 border-green-200',
   },
 };
 
@@ -126,23 +55,66 @@ const formatDate = (dateString: string) => {
 };
 
 export default function ApplicationsFilter() {
+  // Real data from Supabase
+  const [allApplications, setAllApplications] = useState<ApplicationWithBorrowers[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  
+  // Filter states
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('');
   const [dateFilter, setDateFilter] = useState<string>('');
 
+  // Load applications from Supabase
+  useEffect(() => {
+    loadApplications();
+    
+    // Subscribe to real-time updates
+    const subscription = subscribeToApplications(() => {
+      loadApplications();
+    });
+
+    return () => {
+      subscription.unsubscribe();
+    };
+  }, []);
+
+  async function loadApplications() {
+    try {
+      setLoading(true);
+      setError(null);
+      const data = await getApplicationsWithBorrowers();
+      setAllApplications(data);
+    } catch (err) {
+      console.error('Error loading applications:', err);
+      setError('Failed to load applications');
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  // Helper function to get primary borrower name
+  const getPrimaryBorrowerName = (app: ApplicationWithBorrowers) => {
+    const primary = app.borrowers?.find(b => b.borrower_type === 'primary');
+    return primary?.full_name || 'Unknown';
+  };
+
   // Filter applications based on search and filters
   const filteredApplications = useMemo(() => {
-    let filtered = [...MOCK_APPLICATIONS];
+    let filtered = [...allApplications];
 
     // Search filter
     if (searchQuery) {
       const query = searchQuery.toLowerCase();
-      filtered = filtered.filter(
-        (app) =>
-          app.applicantName.toLowerCase().includes(query) ||
-          app.propertyAddress.toLowerCase().includes(query) ||
+      filtered = filtered.filter((app) => {
+        const borrowerName = getPrimaryBorrowerName(app).toLowerCase();
+        return (
+          borrowerName.includes(query) ||
+          app.property_address.toLowerCase().includes(query) ||
+          app.city.toLowerCase().includes(query) ||
           app.id.includes(query)
-      );
+        );
+      });
     }
 
     // Status filter
@@ -154,7 +126,7 @@ export default function ApplicationsFilter() {
     if (dateFilter) {
       const now = new Date();
       filtered = filtered.filter((app) => {
-        const appDate = new Date(app.submittedDate);
+        const appDate = new Date(app.created_at);
         
         switch (dateFilter) {
           case 'today':
@@ -175,17 +147,19 @@ export default function ApplicationsFilter() {
     }
 
     return filtered;
-  }, [searchQuery, statusFilter, dateFilter]);
+  }, [allApplications, searchQuery, statusFilter, dateFilter]);
 
   // Calculate summary stats from filtered results
   const summaryStats = useMemo(() => {
     return {
       total: filteredApplications.length,
-      pending: filteredApplications.filter((app) => app.status === 'pending').length,
-      in_progress: filteredApplications.filter((app) => app.status === 'in_progress').length,
+      draft: filteredApplications.filter((app) => app.status === 'draft').length,
+      collecting: filteredApplications.filter((app) => app.status === 'collecting').length,
+      organized: filteredApplications.filter((app) => app.status === 'organized').length,
+      analyzed: filteredApplications.filter((app) => app.status === 'analyzed').length,
+      submitted: filteredApplications.filter((app) => app.status === 'submitted').length,
       approved: filteredApplications.filter((app) => app.status === 'approved').length,
-      denied: filteredApplications.filter((app) => app.status === 'denied').length,
-      flagged: filteredApplications.filter((app) => app.status === 'flagged').length,
+      rejected: filteredApplications.filter((app) => app.status === 'rejected').length,
     };
   }, [filteredApplications]);
 
@@ -197,33 +171,63 @@ export default function ApplicationsFilter() {
 
   const hasActiveFilters = searchQuery || statusFilter || dateFilter;
 
+  // Loading state
+  if (loading) {
+    return (
+      <div className="text-center py-12">
+        <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600"></div>
+        <p className="mt-4 text-gray-600">Loading applications...</p>
+      </div>
+    );
+  }
+
+  // Error state
+  if (error) {
+    return (
+      <div className="bg-red-50 border border-red-200 rounded-lg p-6">
+        <p className="text-red-600 mb-4">{error}</p>
+        <button onClick={loadApplications} className="btn btn-primary">
+          Try Again
+        </button>
+      </div>
+    );
+  }
+
   return (
     <div>
       {/* Summary Stats */}
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-6">
+      <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-4 mb-6">
         <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
           <div className="text-sm text-gray-600 mb-1">Total</div>
           <div className="text-2xl font-bold text-gray-900">{summaryStats.total}</div>
         </div>
         <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
-          <div className="text-sm text-gray-600 mb-1">Pending</div>
-          <div className="text-2xl font-bold text-yellow-600">{summaryStats.pending}</div>
+          <div className="text-sm text-gray-600 mb-1">Draft</div>
+          <div className="text-2xl font-bold text-gray-600">{summaryStats.draft}</div>
         </div>
         <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
-          <div className="text-sm text-gray-600 mb-1">In Progress</div>
-          <div className="text-2xl font-bold text-blue-600">{summaryStats.in_progress}</div>
+          <div className="text-sm text-gray-600 mb-1">Collecting</div>
+          <div className="text-2xl font-bold text-yellow-600">{summaryStats.collecting}</div>
+        </div>
+        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+          <div className="text-sm text-gray-600 mb-1">Organized</div>
+          <div className="text-2xl font-bold text-blue-600">{summaryStats.organized}</div>
+        </div>
+        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+          <div className="text-sm text-gray-600 mb-1">Analyzed</div>
+          <div className="text-2xl font-bold text-purple-600">{summaryStats.analyzed}</div>
+        </div>
+        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+          <div className="text-sm text-gray-600 mb-1">Submitted</div>
+          <div className="text-2xl font-bold text-indigo-600">{summaryStats.submitted}</div>
         </div>
         <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
           <div className="text-sm text-gray-600 mb-1">Approved</div>
           <div className="text-2xl font-bold text-green-600">{summaryStats.approved}</div>
         </div>
         <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
-          <div className="text-sm text-gray-600 mb-1">Denied</div>
-          <div className="text-2xl font-bold text-red-600">{summaryStats.denied}</div>
-        </div>
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
-          <div className="text-sm text-gray-600 mb-1">Flagged</div>
-          <div className="text-2xl font-bold text-orange-600">{summaryStats.flagged}</div>
+          <div className="text-sm text-gray-600 mb-1">Rejected</div>
+          <div className="text-2xl font-bold text-red-600">{summaryStats.rejected}</div>
         </div>
       </div>
 
@@ -264,11 +268,14 @@ export default function ApplicationsFilter() {
               className="block w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-primary-500 focus:border-primary-500"
             >
               <option value="">All Statuses</option>
-              <option value="pending">Pending</option>
-              <option value="in_progress">In Progress</option>
+              <option value="draft">Draft</option>
+              <option value="collecting">Collecting</option>
+              <option value="organized">Organized</option>
+              <option value="analyzed">Analyzed</option>
+              <option value="submitted">Submitted</option>
               <option value="approved">Approved</option>
-              <option value="denied">Denied</option>
-              <option value="flagged">Flagged</option>
+              <option value="rejected">Rejected</option>
+              <option value="complete">Complete</option>
             </select>
           </div>
 
@@ -303,7 +310,7 @@ export default function ApplicationsFilter() {
             )}
             {statusFilter && (
               <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-primary-100 text-primary-800">
-                Status: {statusConfig[statusFilter as keyof typeof statusConfig].label}
+                Status: {statusConfig[statusFilter as keyof typeof statusConfig]?.label || statusFilter}
               </span>
             )}
             {dateFilter && (
@@ -337,7 +344,7 @@ export default function ApplicationsFilter() {
                   Status
                 </th>
                 <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Submitted
+                  Created
                 </th>
                 <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Actions
@@ -353,7 +360,16 @@ export default function ApplicationsFilter() {
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
                       </svg>
                       <p className="mt-2 text-sm font-medium">No applications found</p>
-                      <p className="mt-1 text-sm">Try adjusting your search or filters</p>
+                      <p className="mt-1 text-sm">
+                        {allApplications.length === 0 
+                          ? 'Create your first application to get started'
+                          : 'Try adjusting your search or filters'}
+                      </p>
+                      {allApplications.length === 0 && (
+                        <a href="/applications/new" className="mt-4 inline-block btn btn-primary">
+                          Create Application
+                        </a>
+                      )}
                     </div>
                   </td>
                 </tr>
@@ -365,41 +381,36 @@ export default function ApplicationsFilter() {
                         <div className="flex-shrink-0 h-10 w-10">
                           <div className="h-10 w-10 rounded-full bg-primary-100 flex items-center justify-center">
                             <span className="text-primary-600 font-medium text-sm">
-                              {app.applicantName.split(' ').map(n => n[0]).join('')}
+                              {getPrimaryBorrowerName(app).split(' ').map(n => n[0]).join('').substring(0, 2)}
                             </span>
                           </div>
                         </div>
                         <div className="ml-4">
-                          <div className="text-sm font-medium text-gray-900">{app.applicantName}</div>
-                          <div className="text-sm text-gray-500">ID: {app.id}</div>
+                          <div className="text-sm font-medium text-gray-900">{getPrimaryBorrowerName(app)}</div>
+                          <div className="text-sm text-gray-500">ID: {app.id.substring(0, 8)}</div>
                         </div>
                       </div>
                     </td>
                     <td className="px-6 py-4">
-                      <div className="text-sm text-gray-900">{app.propertyAddress.split(',')[0]}</div>
-                      <div className="text-sm text-gray-500">{app.propertyAddress.split(',').slice(1).join(',').trim()}</div>
+                      <div className="text-sm text-gray-900">{app.property_address}</div>
+                      <div className="text-sm text-gray-500">{app.city}, {app.province}</div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm font-medium text-gray-900">{formatCurrency(app.loanAmount)}</div>
+                      <div className="text-sm font-medium text-gray-900">{formatCurrency(app.loan_amount)}</div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <span className={`inline-flex items-center px-3 py-1 text-sm font-medium rounded-full border ${statusConfig[app.status].classes}`}>
-                        {statusConfig[app.status].label}
+                      <span className={`inline-flex items-center px-3 py-1 text-sm font-medium rounded-full border ${statusConfig[app.status]?.classes || statusConfig.draft.classes}`}>
+                        {statusConfig[app.status]?.label || app.status}
                       </span>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm text-gray-900">{formatDate(app.submittedDate)}</div>
-                      <div className="text-sm text-gray-500">Updated {formatDate(app.lastUpdated)}</div>
+                      <div className="text-sm text-gray-900">{formatDate(app.created_at)}</div>
+                      <div className="text-sm text-gray-500">Updated {formatDate(app.updated_at)}</div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                      <div className="flex items-center justify-end space-x-2">
-                        <a href={`/applications/${app.id}`} className="text-primary-600 hover:text-primary-900">
-                          View
-                        </a>
-                        <a href={`/applications/${app.id}/edit`} className="text-gray-600 hover:text-gray-900">
-                          Edit
-                        </a>
-                      </div>
+                      <a href={`/applications/${app.id}`} className="text-primary-600 hover:text-primary-900">
+                        View
+                      </a>
                     </td>
                   </tr>
                 ))
@@ -410,40 +421,13 @@ export default function ApplicationsFilter() {
 
         {/* Pagination Footer */}
         {filteredApplications.length > 0 && (
-          <div className="bg-white px-4 py-3 flex items-center justify-between border-t border-gray-200 sm:px-6">
-            <div className="flex-1 flex justify-between sm:hidden">
-              <button className="relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50">
-                Previous
-              </button>
-              <button className="ml-3 relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50">
-                Next
-              </button>
-            </div>
-            <div className="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
+          <div className="bg-white px-4 py-3 border-t border-gray-200">
+            <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-gray-700">
-                  Showing <span className="font-medium">1</span> to <span className="font-medium">{filteredApplications.length}</span> of{' '}
-                  <span className="font-medium">{filteredApplications.length}</span> results
+                  Showing <span className="font-medium">{filteredApplications.length}</span> of{' '}
+                  <span className="font-medium">{allApplications.length}</span> applications
                 </p>
-              </div>
-              <div>
-                <nav className="relative z-0 inline-flex rounded-md shadow-sm -space-x-px" aria-label="Pagination">
-                  <button className="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50">
-                    <span className="sr-only">Previous</span>
-                    <svg className="h-5 w-5" fill="currentColor" viewBox="0 0 20 20">
-                      <path fillRule="evenodd" d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z" clipRule="evenodd" />
-                    </svg>
-                  </button>
-                  <button className="relative inline-flex items-center px-4 py-2 border border-gray-300 bg-gray-50 text-sm font-medium text-primary-600">
-                    1
-                  </button>
-                  <button className="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50">
-                    <span className="sr-only">Next</span>
-                    <svg className="h-5 w-5" fill="currentColor" viewBox="0 0 20 20">
-                      <path fillRule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clipRule="evenodd" />
-                    </svg>
-                  </button>
-                </nav>
               </div>
             </div>
           </div>
