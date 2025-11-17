@@ -35,16 +35,14 @@ export async function getCurrentUser() {
  * Get the current broker profile for the authenticated user
  */
 export async function getCurrentBroker() {
-  const user = await getCurrentUser();
+  const { data: { user } } = await supabase.auth.getUser();
   
-  if (!user) {
-    return null;
-  }
+  if (!user) return null;
   
   const { data, error } = await supabase
     .from('brokers')
     .select('*')
-    .eq('auth_id', user.id)
+    .eq('user_id', user.id)  // ✅ NEW
     .single();
   
   if (error) {

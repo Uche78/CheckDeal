@@ -1,4 +1,5 @@
-import { supabase, getCurrentBroker } from './client';
+import { supabase } from './client';
+import { getCurrentBroker } from './brokers';
 import type { Application, ApplicationInsert, ApplicationUpdate, ApplicationWithBorrowers, ApplicationStats } from '../types/database';
 
 /**
