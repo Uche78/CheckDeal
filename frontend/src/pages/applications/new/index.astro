@@ -1,20 +1,29 @@
 ---
 import DashboardLayout from '../../../layouts/DashboardLayout.astro';
 import ProtectedRoute from '../../../components/auth/ProtectedRoute.tsx';
-import CreateApplicationWizard from '../../../components/applications/CreateApplicationWizard.tsx';
+import CreateApplicationForm from '../../../components/applications/CreateApplicationForm.tsx';
+
+export const prerender = false;
 ---
 
-<DashboardLayout title="New Application">
+<DashboardLayout title="Create Application - DealCheck">
   <ProtectedRoute client:only="react">
     <div class="p-6">
-      <!-- Page Header -->
       <div class="mb-6">
-        <h1 class="text-3xl font-bold text-gray-900 mb-2">Create New Application</h1>
-        <p class="text-gray-600">Complete the form below to submit a new mortgage application</p>
+        <a 
+          href="/applications" 
+          class="text-primary-600 hover:text-primary-700 flex items-center gap-1 mb-4"
+        >
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+          </svg>
+          Back to Applications
+        </a>
+        <h1 class="text-3xl font-bold text-gray-900">Create New Application</h1>
+        <p class="text-gray-600 mt-2">Fill out the form below to create a new mortgage application</p>
       </div>
-
-      <!-- Wizard Component -->
-      <CreateApplicationWizard client:load />
+      
+      <CreateApplicationForm client:load />
     </div>
   </ProtectedRoute>
 </DashboardLayout>

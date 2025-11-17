@@ -1,102 +1,11 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { getApplicationWithBorrowersById, deleteApplication } from '../../lib/supabase/applications';
+import type { ApplicationWithBorrowers } from '../../lib/types/database';
 import StatusBadge from './StatusBadge';
-
-interface Application {
-  id: string;
-  applicantName: string;
-  email: string;
-  phone: string;
-  dateOfBirth: string;
-  propertyAddress: string;
-  city: string;
-  province: string;
-  postalCode: string;
-  propertyType: string;
-  purchasePrice: number;
-  downPayment: number;
-  loanAmount: number;
-  loanPurpose: string;
-  employmentStatus: string;
-  employer: string;
-  annualIncome: number;
-  status: 'pending' | 'in_progress' | 'approved' | 'denied' | 'flagged';
-  submittedDate: string;
-  lastUpdated: string;
-}
 
 interface Props {
   applicationId: string;
 }
-
-// Mock data - will be replaced with Supabase query
-const MOCK_APPLICATIONS: Record<string, Application> = {
-  '1': {
-    id: '1',
-    applicantName: 'John Smith',
-    email: 'john.smith@example.com',
-    phone: '(416) 555-0123',
-    dateOfBirth: '1990-01-15',
-    propertyAddress: '123 Main Street',
-    city: 'Toronto',
-    province: 'ON',
-    postalCode: 'M5V 3A8',
-    propertyType: 'single-family',
-    purchasePrice: 500000,
-    downPayment: 100000,
-    loanAmount: 400000,
-    loanPurpose: 'purchase',
-    employmentStatus: 'full-time',
-    employer: 'Tech Corp Inc.',
-    annualIncome: 85000,
-    status: 'pending',
-    submittedDate: '2024-11-10',
-    lastUpdated: '2024-11-15',
-  },
-  '2': {
-    id: '2',
-    applicantName: 'Sarah Johnson',
-    email: 'sarah.j@example.com',
-    phone: '(416) 555-0456',
-    dateOfBirth: '1985-06-22',
-    propertyAddress: '456 Oak Avenue',
-    city: 'Mississauga',
-    province: 'ON',
-    postalCode: 'L5B 1M2',
-    propertyType: 'condo',
-    purchasePrice: 650000,
-    downPayment: 130000,
-    loanAmount: 520000,
-    loanPurpose: 'purchase',
-    employmentStatus: 'self-employed',
-    employer: 'Johnson Consulting',
-    annualIncome: 120000,
-    status: 'in_progress',
-    submittedDate: '2024-11-08',
-    lastUpdated: '2024-11-14',
-  },
-  '3': {
-    id: '3',
-    applicantName: 'Michael Chen',
-    email: 'mchen@example.com',
-    phone: '(647) 555-0789',
-    dateOfBirth: '1992-03-30',
-    propertyAddress: '789 Maple Drive',
-    city: 'Markham',
-    province: 'ON',
-    postalCode: 'L3R 5K9',
-    propertyType: 'townhouse',
-    purchasePrice: 750000,
-    downPayment: 150000,
-    loanAmount: 600000,
-    loanPurpose: 'purchase',
-    employmentStatus: 'full-time',
-    employer: 'Finance Solutions Ltd',
-    annualIncome: 95000,
-    status: 'approved',
-    submittedDate: '2024-11-05',
-    lastUpdated: '2024-11-12',
-  },
-};
 
 const formatCurrency = (amount: number) => {
   return new Intl.NumberFormat('en-CA', {
@@ -119,20 +28,57 @@ const formatPropertyType = (type: string) => {
   return type.split('-').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
 };
 
-const formatEmploymentStatus = (status: string) => {
-  return status.split('-').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
-};
-
-const formatLoanPurpose = (purpose: string) => {
-  return purpose.charAt(0).toUpperCase() + purpose.slice(1);
-};
-
 export default function ApplicationDetails({ applicationId }: Props) {
-  const [application] = useState<Application | null>(
-    MOCK_APPLICATIONS[applicationId] || null
-  );
+  const [application, setApplication] = useState<ApplicationWithBorrowers | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  if (!application) {
+  useEffect(() => {
+    loadApplication();
+  }, [applicationId]);
+
+  async function loadApplication() {
+    try {
+      setLoading(true);
+      setError(null);
+      const data = await getApplicationWithBorrowersById(applicationId);
+      setApplication(data);
+    } catch (err) {
+      console.error('Error loading application:', err);
+      setError('Failed to load application');
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function handleDelete() {
+    if (!confirm('Are you sure you want to delete this application? This action cannot be undone.')) {
+      return;
+    }
+
+    try {
+      await deleteApplication(applicationId);
+      window.location.href = '/applications';
+    } catch (err) {
+      console.error('Error deleting application:', err);
+      alert('Failed to delete application');
+    }
+  }
+
+  const handleChangeStatus = () => {
+    alert('Status change functionality will be implemented with Supabase');
+  };
+
+  if (loading) {
+    return (
+      <div className="text-center py-12">
+        <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600"></div>
+        <p className="mt-4 text-gray-600">Loading application...</p>
+      </div>
+    );
+  }
+
+  if (error || !application) {
     return (
       <div className="text-center py-12">
         <h2 className="text-2xl font-bold text-gray-900 mb-2">Application Not Found</h2>
@@ -144,25 +90,15 @@ export default function ApplicationDetails({ applicationId }: Props) {
     );
   }
 
-  const handleDelete = () => {
-    if (confirm('Are you sure you want to delete this application? This action cannot be undone.')) {
-      // TODO: Delete from Supabase
-      alert('Delete functionality will be implemented when connected to Supabase');
-      // window.location.href = '/applications';
-    }
-  };
-
-  const handleChangeStatus = () => {
-    // TODO: Show modal to change status
-    alert('Status change functionality will be implemented with Supabase');
-  };
+  // Get primary borrower
+  const primaryBorrower = application.borrowers?.find(b => b.borrower_type === 'primary');
 
   // Calculate metrics
-  const ltvRatio = ((application.loanAmount / application.purchasePrice) * 100).toFixed(1);
-  const downPaymentPercent = ((application.downPayment / application.purchasePrice) * 100).toFixed(1);
-  const monthlyIncome = application.annualIncome / 12;
-  const estimatedMonthlyPayment = application.loanAmount * 0.004; // Rough estimate for demo
-  const dtiRatio = ((estimatedMonthlyPayment / monthlyIncome) * 100).toFixed(1);
+  const ltvRatio = ((application.loan_amount / application.property_value) * 100).toFixed(1);
+  const downPaymentPercent = ((application.down_payment / application.property_value) * 100).toFixed(1);
+  const monthlyIncome = (primaryBorrower?.annual_income || 0) / 12;
+  const estimatedMonthlyPayment = application.loan_amount * 0.004;
+  const dtiRatio = monthlyIncome > 0 ? ((estimatedMonthlyPayment / monthlyIncome) * 100).toFixed(1) : '0';
 
   return (
     <div className="space-y-6">
@@ -181,13 +117,13 @@ export default function ApplicationDetails({ applicationId }: Props) {
             </a>
           </div>
           <h1 className="text-3xl font-bold text-gray-900 mb-2">
-            {application.applicantName}
+            {primaryBorrower?.full_name || 'Unknown Borrower'}
           </h1>
           <p className="text-gray-600">
-            Application #{application.id} • Submitted {formatDate(application.submittedDate)}
+            Application #{application.id.substring(0, 8)} • Submitted {formatDate(application.created_at)}
           </p>
         </div>
-        <StatusBadge status={application.status} />
+        <StatusBadge status={application.status as any} />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -202,35 +138,49 @@ export default function ApplicationDetails({ applicationId }: Props) {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Full Name</label>
-                  <p className="text-gray-900">{application.applicantName}</p>
+                  <p className="text-gray-900">{primaryBorrower?.full_name || 'N/A'}</p>
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Date of Birth</label>
-                  <p className="text-gray-900">{formatDate(application.dateOfBirth)}</p>
+                  <p className="text-gray-900">
+                    {primaryBorrower?.date_of_birth ? formatDate(primaryBorrower.date_of_birth) : 'N/A'}
+                  </p>
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
-                  <a href={`mailto:${application.email}`} className="text-primary-600 hover:text-primary-700">
-                    {application.email}
-                  </a>
+                  {primaryBorrower?.email ? (
+                    <a href={`mailto:${primaryBorrower.email}`} className="text-primary-600 hover:text-primary-700">
+                      {primaryBorrower.email}
+                    </a>
+                  ) : (
+                    <p className="text-gray-900">N/A</p>
+                  )}
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Phone</label>
-                  <a href={`tel:${application.phone}`} className="text-primary-600 hover:text-primary-700">
-                    {application.phone}
-                  </a>
+                  {primaryBorrower?.phone ? (
+                    <a href={`tel:${primaryBorrower.phone}`} className="text-primary-600 hover:text-primary-700">
+                      {primaryBorrower.phone}
+                    </a>
+                  ) : (
+                    <p className="text-gray-900">N/A</p>
+                  )}
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Employment Status</label>
-                  <p className="text-gray-900">{formatEmploymentStatus(application.employmentStatus)}</p>
+                  <p className="text-gray-900 capitalize">
+                    {primaryBorrower?.employment_status?.replace(/-/g, ' ') || 'N/A'}
+                  </p>
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Employer</label>
-                  <p className="text-gray-900">{application.employer}</p>
+                  <p className="text-gray-900">{primaryBorrower?.employer || 'N/A'}</p>
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Annual Income</label>
-                  <p className="text-gray-900 font-semibold">{formatCurrency(application.annualIncome)}</p>
+                  <p className="text-gray-900 font-semibold">
+                    {primaryBorrower?.annual_income ? formatCurrency(primaryBorrower.annual_income) : 'N/A'}
+                  </p>
                 </div>
               </div>
             </div>
@@ -245,18 +195,15 @@ export default function ApplicationDetails({ applicationId }: Props) {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="md:col-span-2">
                   <label className="block text-sm font-medium text-gray-700 mb-1">Address</label>
-                  <p className="text-gray-900">
-                    {application.propertyAddress}<br />
-                    {application.city}, {application.province} {application.postalCode}
-                  </p>
+                  <p className="text-gray-900">{application.property_address}</p>
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Property Type</label>
-                  <p className="text-gray-900">{formatPropertyType(application.propertyType)}</p>
+                  <p className="text-gray-900">{formatPropertyType(application.property_type)}</p>
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Purchase Price</label>
-                  <p className="text-gray-900 font-semibold">{formatCurrency(application.purchasePrice)}</p>
+                  <p className="text-gray-900 font-semibold">{formatCurrency(application.property_value)}</p>
                 </div>
               </div>
             </div>
@@ -271,15 +218,15 @@ export default function ApplicationDetails({ applicationId }: Props) {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Loan Purpose</label>
-                  <p className="text-gray-900">{formatLoanPurpose(application.loanPurpose)}</p>
+                  <p className="text-gray-900 capitalize">{application.loan_purpose?.replace(/-/g, ' ') || 'N/A'}</p>
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Loan Amount</label>
-                  <p className="text-gray-900 font-semibold text-lg">{formatCurrency(application.loanAmount)}</p>
+                  <p className="text-gray-900 font-semibold text-lg">{formatCurrency(application.loan_amount)}</p>
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Down Payment</label>
-                  <p className="text-gray-900">{formatCurrency(application.downPayment)} ({downPaymentPercent}%)</p>
+                  <p className="text-gray-900">{formatCurrency(application.down_payment)} ({downPaymentPercent}%)</p>
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">LTV Ratio</label>
@@ -318,12 +265,14 @@ export default function ApplicationDetails({ applicationId }: Props) {
               >
                 Edit Application
               </a>
-              <a 
-                href={`mailto:${application.email}`}
-                className="w-full btn bg-white text-gray-700 hover:bg-gray-50 border border-gray-300"
-              >
-                Contact Applicant
-              </a>
+              {primaryBorrower?.email && (
+                <a 
+                  href={`mailto:${primaryBorrower.email}`}
+                  className="w-full btn bg-white text-gray-700 hover:bg-gray-50 border border-gray-300"
+                >
+                  Contact Applicant
+                </a>
+              )}
               <button 
                 onClick={handleDelete}
                 className="w-full btn bg-red-50 text-red-700 hover:bg-red-100 border border-red-200"
@@ -389,14 +338,14 @@ export default function ApplicationDetails({ applicationId }: Props) {
                   <div className="flex-shrink-0 w-2 h-2 rounded-full bg-green-500 mt-2"></div>
                   <div>
                     <p className="text-sm font-medium text-gray-900">Application Updated</p>
-                    <p className="text-xs text-gray-500">{formatDate(application.lastUpdated)}</p>
+                    <p className="text-xs text-gray-500">{formatDate(application.updated_at)}</p>
                   </div>
                 </div>
                 <div className="flex gap-3">
                   <div className="flex-shrink-0 w-2 h-2 rounded-full bg-blue-500 mt-2"></div>
                   <div>
                     <p className="text-sm font-medium text-gray-900">Application Submitted</p>
-                    <p className="text-xs text-gray-500">{formatDate(application.submittedDate)}</p>
+                    <p className="text-xs text-gray-500">{formatDate(application.created_at)}</p>
                   </div>
                 </div>
               </div>
