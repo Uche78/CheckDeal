@@ -1,5 +1,5 @@
 import type { Document, DocumentInsert } from '../types/database';
-import { getSupabaseClient } from '../supabase-client';
+import { supabase } from '../supabase-client';
 
 /**
  * Upload a document file
@@ -49,8 +49,6 @@ export async function getDocuments(applicationId: string): Promise<{
   error: Error | null;
 }> {
   try {
-    const supabase = getSupabaseClient();
-    
     const { data, error } = await supabase
       .from('documents')
       .select('*')
@@ -76,8 +74,6 @@ export async function getDocumentUrl(filePath: string, expiresIn: number = 3600)
   error: Error | null;
 }> {
   try {
-    const supabase = getSupabaseClient();
-    
     const { data, error } = await supabase.storage
       .from('mortgage-documents')
       .createSignedUrl(filePath, expiresIn);
@@ -100,8 +96,6 @@ export async function deleteDocument(documentId: string, filePath: string): Prom
   error: Error | null;
 }> {
   try {
-    const supabase = getSupabaseClient();
-
     // Delete from storage
     const { error: storageError } = await supabase.storage
       .from('mortgage-documents')
@@ -132,8 +126,6 @@ export async function downloadDocument(filePath: string, fileName: string): Prom
   error: Error | null;
 }> {
   try {
-    const supabase = getSupabaseClient();
-    
     const { data, error } = await supabase.storage
       .from('mortgage-documents')
       .download(filePath);
