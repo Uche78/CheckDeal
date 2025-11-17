@@ -43,7 +43,7 @@ export async function getApplicationsWithBorrowers(): Promise<ApplicationWithBor
   if (!broker) {
     throw new Error('Not authenticated');
   }
-  
+
   const { data, error } = await supabase
     .from('applications')
     .select(`
@@ -53,13 +53,19 @@ export async function getApplicationsWithBorrowers(): Promise<ApplicationWithBor
     .eq('broker_id', broker.id)
     .is('deleted_at', null)
     .order('created_at', { ascending: false });
-  
+
   if (error) {
-    console.error('Error fetching applications with borrowers:', error);
+    console.error('Error fetching applications:', error);
     throw error;
   }
-  
-  return data || [];
+
+  // Filter out soft-deleted borrowers from each application
+  const filteredData = (data || []).map(app => ({
+    ...app,
+    borrowers: app.borrowers?.filter(b => !b.deleted_at) || []
+  }));
+
+  return filteredData;
 }
 
 /**
@@ -96,31 +102,26 @@ export async function getApplicationById(id: string): Promise<Application | null
  * Get a single application with borrowers by ID
  */
 export async function getApplicationWithBorrowersById(id: string): Promise<ApplicationWithBorrowers | null> {
-  const broker = await getCurrentBroker();
-  
-  if (!broker) {
-    throw new Error('Not authenticated');
-  }
-  
   const { data, error } = await supabase
     .from('applications')
     .select(`
       *,
-      borrowers (*)
+      borrowers!inner(*)
     `)
     .eq('id', id)
-    .eq('broker_id', broker.id)
     .is('deleted_at', null)
     .single();
-  
+
   if (error) {
-    if (error.code === 'PGRST116') {
-      return null;
-    }
-    console.error('Error fetching application with borrowers:', error);
-    throw error;
+    console.error('Error fetching application:', error);
+    return null;
   }
-  
+
+  // Filter out soft-deleted borrowers
+  if (data && data.borrowers) {
+    data.borrowers = data.borrowers.filter(b => !b.deleted_at);
+  }
+
   return data;
 }
 
@@ -158,32 +159,6 @@ if (error) {
   return data;
 }
 
-/**
- * Update an existing application
- */
-export async function updateApplication(id: string, updates: ApplicationUpdate): Promise<Application> {
-  const broker = await getCurrentBroker();
-  
-  if (!broker) {
-    throw new Error('Not authenticated');
-  }
-  
-  const { data, error } = await supabase
-    .from('applications')
-    .update(updates)
-    .eq('id', id)
-    .eq('broker_id', broker.id)
-    .is('deleted_at', null)
-    .select()
-    .single();
-  
-  if (error) {
-    console.error('Error updating application:', error);
-    throw error;
-  }
-  
-  return data;
-}
 
 /**
  * Update application status
@@ -326,4 +301,33 @@ export async function getApplicationStats() {
     denied,
     flagged,
   };
+}
+
+/**
+ * Update an application
+ */
+export async function updateApplication(id: string, updates: Partial<ApplicationUpdate>): Promise<Application> {
+  const broker = await getCurrentBroker();
+  
+  if (!broker) {
+    throw new Error('Not authenticated');
+  }
+
+  const { data, error } = await supabase
+    .from('applications')
+    .update({
+      ...updates,
+      updated_at: new Date().toISOString(),
+    })
+    .eq('id', id)
+    .eq('broker_id', broker.id)
+    .select()
+    .single();
+
+  if (error) {
+    console.error('Error updating application:', error);
+    throw error;
+  }
+
+  return data;
 }
