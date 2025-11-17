@@ -1,0 +1,149 @@
+---
+import UploadLayout from '../../layouts/UploadLayout.astro';
+import { validateUploadToken } from '../../lib/supabase/upload-tokens';
+
+// Get token from URL
+const { token } = Astro.params;
+
+// Validate token on server side
+let tokenData = null;
+let error = null;
+let isValid = false;
+
+if (token) {
+  const result = await fetch(`${Astro.url.origin}/api/upload-tokens/validate`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ token })
+  });
+  
+  const data = await result.json();
+  
+  if (data.valid) {
+    isValid = true;
+    tokenData = data.token;
+  } else {
+    error = data.error;
+  }
+} else {
+  error = 'No token provided';
+}
+---
+
+<UploadLayout title={isValid ? 'Upload Documents' : 'Invalid Link'}>
+  <div class="space-y-6">
+    
+    {/* Valid Token - Show Upload Interface */}
+    {isValid && tokenData && (
+      <div>
+        {/* Application Info Card */}
+        <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
+          <h2 class="text-2xl font-semibold text-gray-900 mb-2">
+            Upload Your Documents
+          </h2>
+          <p class="text-gray-600 mb-4">
+            Please upload the required documents for your mortgage application.
+          </p>
+          
+          {/* Application Details */}
+          <div class="bg-gray-50 rounded-lg p-4 space-y-2">
+            <div class="flex items-start">
+              <span class="text-sm font-medium text-gray-500 w-32">Applicant:</span>
+              <span class="text-sm text-gray-900 font-medium">
+                {tokenData.applications?.borrower_name || 'N/A'}
+              </span>
+            </div>
+            <div class="flex items-start">
+              <span class="text-sm font-medium text-gray-500 w-32">Property:</span>
+              <span class="text-sm text-gray-900">
+                {tokenData.applications?.property_address || 'N/A'}
+              </span>
+            </div>
+            <div class="flex items-start">
+              <span class="text-sm font-medium text-gray-500 w-32">Link Expires:</span>
+              <span class="text-sm text-gray-900">
+                {new Date(tokenData.expires_at).toLocaleDateString('en-CA', {
+                  year: 'numeric',
+                  month: 'long',
+                  day: 'numeric',
+                  hour: '2-digit',
+                  minute: '2-digit'
+                })}
+              </span>
+            </div>
+          </div>
+        </div>
+
+        {/* Upload Zone - We'll create this component in Task 3.6 */}
+        <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+          <div id="upload-zone" 
+               data-token={token}
+               data-application-id={tokenData.application_id}>
+            {/* React component will be mounted here in Task 3.6 */}
+            <div class="text-center py-12">
+              <div class="inline-flex items-center justify-center w-16 h-16 rounded-full bg-gray-100 mb-4">
+                <svg class="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                </svg>
+              </div>
+              <p class="text-gray-600 mb-2">
+                Upload interface will be added in next task
+              </p>
+              <p class="text-sm text-gray-500">
+                Accepted formats: PDF, JPG, PNG (Max 10MB)
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {/* Security Notice */}
+        <div class="bg-blue-50 border border-blue-200 rounded-lg p-4 mt-6">
+          <div class="flex items-start">
+            <svg class="w-5 h-5 text-blue-600 mt-0.5 mr-3 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+              <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd" />
+            </svg>
+            <div>
+              <h3 class="text-sm font-medium text-blue-900 mb-1">Secure Upload</h3>
+              <p class="text-sm text-blue-700">
+                Your documents are encrypted and securely stored. Only your mortgage broker can access them.
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+    )}
+
+    {/* Invalid Token - Show Error */}
+    {!isValid && (
+      <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-8">
+        <div class="text-center">
+          <div class="inline-flex items-center justify-center w-16 h-16 rounded-full bg-red-100 mb-4">
+            <svg class="w-8 h-8 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </div>
+          
+          <h2 class="text-2xl font-semibold text-gray-900 mb-2">
+            Invalid Upload Link
+          </h2>
+          
+          <p class="text-gray-600 mb-6">
+            {error === 'Token has expired' 
+              ? 'This upload link has expired. Please contact your mortgage broker for a new link.'
+              : error === 'Token upload limit reached'
+              ? 'This upload link has reached its maximum number of uploads.'
+              : 'This upload link is invalid or has been used. Please contact your mortgage broker for assistance.'}
+          </p>
+
+          <div class="bg-gray-50 rounded-lg p-4 text-left max-w-md mx-auto">
+            <h3 class="text-sm font-medium text-gray-900 mb-2">Need help?</h3>
+            <p class="text-sm text-gray-600">
+              Contact your mortgage broker to request a new upload link. They can generate a fresh link for you to submit your documents.
+            </p>
+          </div>
+        </div>
+      </div>
+    )}
+
+  </div>
+</UploadLayout>
