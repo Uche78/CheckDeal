@@ -13,49 +13,49 @@ export interface Database {
   public: {
     Tables: {
       brokers: {
-        Row: {
-          id: string
-          auth_id: string
-          email: string
-          full_name: string
-          phone: string | null
-          brokerage_name: string | null
-          license_number: string | null
-          notification_email: boolean
-          notification_sms: boolean
-          created_at: string
-          updated_at: string
-          deleted_at: string | null
-        }
-        Insert: {
-          id?: string
-          auth_id: string
-          email: string
-          full_name: string
-          phone?: string | null
-          brokerage_name?: string | null
-          license_number?: string | null
-          notification_email?: boolean
-          notification_sms?: boolean
-          created_at?: string
-          updated_at?: string
-          deleted_at?: string | null
-        }
-        Update: {
-          id?: string
-          auth_id?: string
-          email?: string
-          full_name?: string
-          phone?: string | null
-          brokerage_name?: string | null
-          license_number?: string | null
-          notification_email?: boolean
-          notification_sms?: boolean
-          created_at?: string
-          updated_at?: string
-          deleted_at?: string | null
-        }
-      }
+  Row: {
+    id: string
+    user_id: string
+    email: string
+    full_name: string | null
+    phone: string | null
+    company_name: string | null
+    license_number: string | null
+    notification_email: boolean
+    notification_sms: boolean
+    created_at: string
+    updated_at: string
+    deleted_at: string | null
+  }
+  Insert: {
+    id?: string
+    user_id: string
+    email: string
+    full_name?: string | null
+    phone?: string | null
+    company_name?: string | null
+    license_number?: string | null
+    notification_email?: boolean
+    notification_sms?: boolean
+    created_at?: string
+    updated_at?: string
+    deleted_at?: string | null
+  }
+  Update: {
+    id?: string
+    user_id?: string
+    email?: string
+    full_name?: string | null
+    phone?: string | null
+    company_name?: string | null
+    license_number?: string | null
+    notification_email?: boolean
+    notification_sms?: boolean
+    created_at?: string
+    updated_at?: string
+    deleted_at?: string | null
+  }
+}
       applications: {
         Row: {
           id: string
@@ -192,6 +192,9 @@ export interface Database {
 export type Broker = Database['public']['Tables']['brokers']['Row']
 export type Application = Database['public']['Tables']['applications']['Row']
 export type Borrower = Database['public']['Tables']['borrowers']['Row']
+
+export type BrokerInsert = Database['public']['Tables']['brokers']['Insert'];
+export type BrokerUpdate = Database['public']['Tables']['brokers']['Update'];
 
 export type ApplicationInsert = Database['public']['Tables']['applications']['Insert']
 export type ApplicationUpdate = Database['public']['Tables']['applications']['Update']
