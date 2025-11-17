@@ -171,6 +171,25 @@ export interface Database {
           deleted_at?: string | null
         }
       }
+// Document types
+export interface Document {
+  id: string;
+  application_id: string;
+  file_name: string;
+  file_path: string;
+  file_size: number;
+  file_type: string;
+  uploaded_by: 'broker' | 'borrower';
+  uploaded_at: string;
+  status: 'new' | 'fraud_alert' | 'organized' | 'analyzed';
+  fraud_score?: number;
+  fraud_flags?: any;
+  created_at: string;
+  updated_at: string;
+}
+
+export type DocumentInsert = Omit<Document, 'id' | 'created_at' | 'updated_at' | 'uploaded_at'>;
+export type DocumentUpdate = Partial<Omit<Document, 'id' | 'application_id' | 'created_at'>>;
     }
     Views: {
       [_ in never]: never
@@ -217,3 +236,20 @@ export interface ApplicationStats {
   denied: number;
   flagged: number;
 }
+
+// Upload Token types
+export interface UploadToken {
+  id: string;
+  application_id: string;
+  token: string;
+  expires_at: string;
+  is_used: boolean;
+  used_at: string | null;
+  created_by: string | null;
+  created_at: string;
+  max_uploads: number | null;
+  uploads_count: number;
+}
+
+export type UploadTokenInsert = Omit<UploadToken, 'id' | 'created_at' | 'is_used' | 'used_at' | 'uploads_count'>;
+export type UploadTokenUpdate = Partial<Omit<UploadToken, 'id' | 'token' | 'application_id'>>;
