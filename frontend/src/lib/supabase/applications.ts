@@ -218,46 +218,6 @@ export async function deleteApplication(id: string): Promise<void> {
 }
 
 /**
- * Get application statistics for dashboard
- */
-export async function getApplicationStats(): Promise<ApplicationStats> {
-  const broker = await getCurrentBroker();
-  
-  if (!broker) {
-    throw new Error('Not authenticated');
-  }
-  
-  const { data, error } = await supabase
-    .from('applications')
-    .select('status')
-    .eq('broker_id', broker.id)
-    .is('deleted_at', null);
-  
-  if (error) {
-    console.error('Error fetching application stats:', error);
-    throw error;
-  }
-  
-  const stats: ApplicationStats = {
-    total: data.length,
-    draft: 0,
-    collecting: 0,
-    organized: 0,
-    analyzed: 0,
-    submitted: 0,
-    approved: 0,
-    rejected: 0,
-    complete: 0,
-  };
-  
-  data.forEach(app => {
-    stats[app.status]++;
-  });
-  
-  return stats;
-}
-
-/**
  * Search and filter applications
  */
 export async function searchApplications(
@@ -326,4 +286,44 @@ export function subscribeToApplications(
       callback
     )
     .subscribe();
+}
+
+/**
+ * Get application statistics for the current broker
+ */
+export async function getApplicationStats() {
+  const broker = await getCurrentBroker();
+  
+  if (!broker) {
+    throw new Error('Not authenticated');
+  }
+
+  // Get all applications for this broker
+  const { data: applications, error } = await supabase
+    .from('applications')
+    .select('status')
+    .eq('broker_id', broker.id)
+    .is('deleted_at', null);
+
+  if (error) {
+    console.error('Error fetching application stats:', error);
+    throw error;
+  }
+
+  // Calculate stats
+  const total = applications?.length || 0;
+  const pending = applications?.filter(app => app.status === 'pending').length || 0;
+  const in_progress = applications?.filter(app => app.status === 'in_progress').length || 0;
+  const approved = applications?.filter(app => app.status === 'approved').length || 0;
+  const denied = applications?.filter(app => app.status === 'denied').length || 0;
+  const flagged = applications?.filter(app => app.status === 'flagged').length || 0;
+
+  return {
+    total,
+    pending,
+    in_progress,
+    approved,
+    denied,
+    flagged,
+  };
 }
