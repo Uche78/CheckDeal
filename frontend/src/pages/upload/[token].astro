@@ -1,6 +1,7 @@
 ---
 import UploadLayout from '../../layouts/UploadLayout.astro';
 import { validateUploadToken } from '../../lib/supabase/upload-tokens';
+import UploadContainer from '../../components/upload/UploadContainer';
 
 // Get token from URL
 const { token } = Astro.params;
@@ -74,26 +75,22 @@ if (token) {
           </div>
         </div>
 
-        {/* Upload Zone - We'll create this component in Task 3.6 */}
-        <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-          <div id="upload-zone" 
-               data-token={token}
-               data-application-id={tokenData.application_id}>
-            {/* React component will be mounted here in Task 3.6 */}
-            <div class="text-center py-12">
-              <div class="inline-flex items-center justify-center w-16 h-16 rounded-full bg-gray-100 mb-4">
-                <svg class="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
-                </svg>
-              </div>
-              <p class="text-gray-600 mb-2">
-                Upload interface will be added in next task
-              </p>
-              <p class="text-sm text-gray-500">
-                Accepted formats: PDF, JPG, PNG (Max 10MB)
-              </p>
-            </div>
-          </div>
+
+        {/* Upload Zone with React Component */}
+          <UploadZone 
+            client:load
+            applicationId={tokenData.application_id}
+            token={token}
+            borrowerName={tokenData.applications?.borrower_name}
+          />
+
+        {/* Previously Uploaded Files */}
+        <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mt-6">
+          <FileList 
+            client:load
+            applicationId={tokenData.application_id}
+            showDelete={true}
+          />
         </div>
 
         {/* Security Notice */}
