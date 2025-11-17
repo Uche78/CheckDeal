@@ -1,6 +1,7 @@
 import { supabase } from './client';
 import { getCurrentBroker } from './brokers';
 import type { Application, ApplicationInsert, ApplicationUpdate, ApplicationWithBorrowers, ApplicationStats } from '../types/database';
+import { logActivity } from './activity-logs';
 
 /**
  * Generate a unique upload token for borrower portal
@@ -155,19 +156,55 @@ if (error) {
   });
   throw error;
 }
+
+// Log activity
+  await logActivity(
+    data.id,
+    'application_created',
+    'Application created',
+    { property_address: application.property_address }
+  );
   
   return data;
 }
-
 
 /**
  * Update application status
  */
 export async function updateApplicationStatus(
   id: string,
-  status: Application['status']
+  status: 'pending' | 'in_progress' | 'approved' | 'denied' | 'flagged'
 ): Promise<Application> {
-  return updateApplication(id, { status });
+  const broker = await getCurrentBroker();
+  
+  if (!broker) {
+    throw new Error('Not authenticated');
+  }
+
+  const { data, error } = await supabase
+    .from('applications')
+    .update({
+      status,
+      updated_at: new Date().toISOString(),
+    })
+    .eq('id', id)
+    .eq('broker_id', broker.id)
+    .select()
+    .single();
+
+  if (error) {
+    console.error('Error updating application status:', error);
+    throw error;
+  }
+// ✅ Log activity
+  await logActivity(
+    id,
+    'status_changed',
+    `Status changed from ${currentApp?.status} to ${status}`,
+    { old_status: currentApp?.status, new_status: status }
+  );
+
+  return data;
 }
 
 /**
@@ -190,6 +227,12 @@ export async function deleteApplication(id: string): Promise<void> {
     console.error('Error deleting application:', error);
     throw error;
   }
+// ✅ Log activity
+  await logActivity(
+    id,
+    'application_deleted',
+    'Application deleted'
+  );
 }
 
 /**

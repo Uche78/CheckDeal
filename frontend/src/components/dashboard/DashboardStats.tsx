@@ -2,6 +2,15 @@ import { useState, useEffect } from 'react';
 import { getApplicationStats } from '../../lib/supabase/applications';
 import type { ApplicationStats } from '../../lib/types/database';
 
+interface ApplicationStats {
+  total: number;
+  pending: number;
+  in_progress: number;
+  approved: number;
+  denied: number;
+  flagged: number;
+}
+
 export default function DashboardStats() {
   const [stats, setStats] = useState<ApplicationStats | null>(null);
   const [loading, setLoading] = useState(true);
@@ -26,12 +35,12 @@ export default function DashboardStats() {
 
   if (loading) {
     return (
-      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         {[1, 2, 3, 4].map(i => (
-          <div key={i} class="card animate-pulse">
-            <div class="card-body">
-              <div class="h-4 bg-gray-200 rounded w-1/2 mb-2"></div>
-              <div class="h-8 bg-gray-200 rounded w-1/3"></div>
+          <div key={i} className="card animate-pulse">
+            <div className="card-body">
+              <div className="h-4 bg-gray-200 rounded w-1/2 mb-2"></div>
+              <div className="h-8 bg-gray-200 rounded w-1/3"></div>
             </div>
           </div>
         ))}
@@ -41,9 +50,9 @@ export default function DashboardStats() {
 
   if (error || !stats) {
     return (
-      <div class="card bg-red-50 border-red-200">
-        <div class="card-body">
-          <p class="text-red-600">{error || 'Failed to load statistics'}</p>
+      <div className="card bg-red-50 border-red-200">
+        <div className="card-body">
+          <p className="text-red-600">{error || 'Failed to load statistics'}</p>
         </div>
       </div>
     );
@@ -54,38 +63,38 @@ export default function DashboardStats() {
       label: 'Total Applications',
       value: stats.total,
       icon: '📋',
-      color: 'bg-blue-50 text-blue-700',
+      colorClasses: 'bg-blue-50 text-blue-700',
+    },
+    {
+      label: 'Pending',
+      value: stats.pending,
+      icon: '⏳',
+      colorClasses: 'bg-yellow-50 text-yellow-700',
     },
     {
       label: 'In Progress',
-      value: stats.collecting + stats.organized,
-      icon: '⏳',
-      color: 'bg-yellow-50 text-yellow-700',
+      value: stats.in_progress,
+      icon: '🔄',
+      colorClasses: 'bg-indigo-50 text-indigo-700',
     },
     {
       label: 'Approved',
       value: stats.approved,
       icon: '✅',
-      color: 'bg-green-50 text-green-700',
-    },
-    {
-      label: 'Pending Review',
-      value: stats.draft + stats.analyzed,
-      icon: '👀',
-      color: 'bg-purple-50 text-purple-700',
+      colorClasses: 'bg-green-50 text-green-700',
     },
   ];
 
   return (
-    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
       {statCards.map((stat) => (
-        <div key={stat.label} class="card hover:shadow-lg transition-shadow">
-          <div class="card-body">
-            <div class="flex items-center justify-between mb-2">
-              <span class="text-sm font-medium text-gray-600">{stat.label}</span>
-              <span class={`text-2xl ${stat.color} p-2 rounded-lg`}>{stat.icon}</span>
+        <div key={stat.label} className="card hover:shadow-lg transition-shadow">
+          <div className="card-body">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-sm font-medium text-gray-600">{stat.label}</span>
+              <span className={`text-2xl ${stat.colorClasses} p-2 rounded-lg`}>{stat.icon}</span>
             </div>
-            <p class="text-3xl font-bold text-gray-900">{stat.value}</p>
+            <p className="text-3xl font-bold text-gray-900">{stat.value}</p>
           </div>
         </div>
       ))}

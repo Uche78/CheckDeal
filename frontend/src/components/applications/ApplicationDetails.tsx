@@ -1,7 +1,11 @@
 import { useState, useEffect } from 'react';
 import { getApplicationWithBorrowersById, deleteApplication } from '../../lib/supabase/applications';
 import type { ApplicationWithBorrowers } from '../../lib/types/database';
+import AddBorrowerModal from './AddBorrowerModal';
+import { deleteBorrower } from '../../lib/supabase/borrowers';
+import StatusChangeModal from './StatusChangeModal';
 import StatusBadge from './StatusBadge';
+import ActivityTimeline from './ActivityTimeline';
 
 interface Props {
   applicationId: string;
@@ -32,6 +36,7 @@ export default function ApplicationDetails({ applicationId }: Props) {
   const [application, setApplication] = useState<ApplicationWithBorrowers | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [showStatusChange, setShowStatusChange] = useState(false);
 
   useEffect(() => {
     loadApplication();
@@ -51,6 +56,23 @@ export default function ApplicationDetails({ applicationId }: Props) {
     }
   }
 
+const [showAddBorrower, setShowAddBorrower] = useState(false);
+
+async function handleRemoveBorrower(borrowerId: string) {
+  if (!confirm('Are you sure you want to remove this co-borrower?')) {
+    return;
+  }
+
+  try {
+    await deleteBorrower(borrowerId);
+    // Reload application
+    loadApplication();
+  } catch (err) {
+    console.error('Error removing borrower:', err);
+    alert('Failed to remove borrower');
+  }
+}
+
   async function handleDelete() {
     if (!confirm('Are you sure you want to delete this application? This action cannot be undone.')) {
       return;
@@ -65,9 +87,9 @@ export default function ApplicationDetails({ applicationId }: Props) {
     }
   }
 
-  const handleChangeStatus = () => {
-    alert('Status change functionality will be implemented with Supabase');
-  };
+const handleChangeStatus = () => {
+  setShowStatusChange(true);
+};
 
   if (loading) {
     return (
@@ -129,62 +151,94 @@ export default function ApplicationDetails({ applicationId }: Props) {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Main Content */}
         <div className="lg:col-span-2 space-y-6">
-          {/* Borrower Information */}
-          <div className="card">
-            <div className="card-header">
-              <h2 className="text-xl font-semibold text-gray-900">Borrower Information</h2>
+
+{/* Borrower Information - Enhanced to show all borrowers */}
+<div className="card">
+  <div className="card-header flex items-center justify-between">
+    <h2 className="text-xl font-semibold text-gray-900">Borrower Information</h2>
+    <button
+      onClick={() => setShowAddBorrower(true)}
+      className="btn btn-sm btn-primary"
+    >
+      + Add Co-Borrower
+    </button>
+  </div>
+  <div className="card-body space-y-6">
+    {application.borrowers?.map((borrower, index) => (
+      <div key={borrower.id} className={`${index > 0 ? 'pt-6 border-t border-gray-200' : ''}`}>
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-full bg-primary-100 flex items-center justify-center">
+              <span className="text-primary-600 font-medium text-sm">
+                {borrower.full_name?.split(' ').map(n => n[0]).join('').substring(0, 2) || '?'}
+              </span>
             </div>
-            <div className="card-body">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Full Name</label>
-                  <p className="text-gray-900">{primaryBorrower?.full_name || 'N/A'}</p>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Date of Birth</label>
-                  <p className="text-gray-900">
-                    {primaryBorrower?.date_of_birth ? formatDate(primaryBorrower.date_of_birth) : 'N/A'}
-                  </p>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
-                  {primaryBorrower?.email ? (
-                    <a href={`mailto:${primaryBorrower.email}`} className="text-primary-600 hover:text-primary-700">
-                      {primaryBorrower.email}
-                    </a>
-                  ) : (
-                    <p className="text-gray-900">N/A</p>
-                  )}
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Phone</label>
-                  {primaryBorrower?.phone ? (
-                    <a href={`tel:${primaryBorrower.phone}`} className="text-primary-600 hover:text-primary-700">
-                      {primaryBorrower.phone}
-                    </a>
-                  ) : (
-                    <p className="text-gray-900">N/A</p>
-                  )}
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Employment Status</label>
-                  <p className="text-gray-900 capitalize">
-                    {primaryBorrower?.employment_status?.replace(/-/g, ' ') || 'N/A'}
-                  </p>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Employer</label>
-                  <p className="text-gray-900">{primaryBorrower?.employer || 'N/A'}</p>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Annual Income</label>
-                  <p className="text-gray-900 font-semibold">
-                    {primaryBorrower?.annual_income ? formatCurrency(primaryBorrower.annual_income) : 'N/A'}
-                  </p>
-                </div>
-              </div>
+            <div>
+              <h3 className="font-semibold text-gray-900">{borrower.full_name}</h3>
+              <span className="text-xs text-gray-500 capitalize">
+                {borrower.borrower_type.replace('_', ' ')}
+              </span>
             </div>
           </div>
+          {borrower.borrower_type !== 'primary' && (
+            <button
+              onClick={() => handleRemoveBorrower(borrower.id)}
+              className="text-red-600 hover:text-red-700 text-sm"
+            >
+              Remove
+            </button>
+          )}
+        </div>
+        
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
+            {borrower.email ? (
+              <a href={`mailto:${borrower.email}`} className="text-primary-600 hover:text-primary-700">
+                {borrower.email}
+              </a>
+            ) : (
+              <p className="text-gray-900">N/A</p>
+            )}
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Phone</label>
+            {borrower.phone ? (
+              <a href={`tel:${borrower.phone}`} className="text-primary-600 hover:text-primary-700">
+                {borrower.phone}
+              </a>
+            ) : (
+              <p className="text-gray-900">N/A</p>
+            )}
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Date of Birth</label>
+            <p className="text-gray-900">
+              {borrower.date_of_birth ? formatDate(borrower.date_of_birth) : 'N/A'}
+            </p>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Employment Status</label>
+            <p className="text-gray-900 capitalize">
+              {borrower.employment_status?.replace(/-/g, ' ') || 'N/A'}
+            </p>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Employer</label>
+            <p className="text-gray-900">{borrower.employer || 'N/A'}</p>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Annual Income</label>
+            <p className="text-gray-900 font-semibold">
+              {borrower.annual_income ? formatCurrency(borrower.annual_income) : 'N/A'}
+            </p>
+          </div>
+        </div>
+      </div>
+    ))}
+  </div>
+</div>
+
 
           {/* Property Information */}
           <div className="card">
@@ -333,26 +387,36 @@ export default function ApplicationDetails({ applicationId }: Props) {
               <h3 className="text-lg font-semibold text-gray-900">Activity Timeline</h3>
             </div>
             <div className="card-body">
-              <div className="space-y-4">
-                <div className="flex gap-3">
-                  <div className="flex-shrink-0 w-2 h-2 rounded-full bg-green-500 mt-2"></div>
-                  <div>
-                    <p className="text-sm font-medium text-gray-900">Application Updated</p>
-                    <p className="text-xs text-gray-500">{formatDate(application.updated_at)}</p>
-                  </div>
-                </div>
-                <div className="flex gap-3">
-                  <div className="flex-shrink-0 w-2 h-2 rounded-full bg-blue-500 mt-2"></div>
-                  <div>
-                    <p className="text-sm font-medium text-gray-900">Application Submitted</p>
-                    <p className="text-xs text-gray-500">{formatDate(application.created_at)}</p>
-                  </div>
-                </div>
-              </div>
+             <ActivityTimeline applicationId={applicationId} />
             </div>
           </div>
         </div>
       </div>
+{/* Add Borrower Modal */}
+{showAddBorrower && (
+  <AddBorrowerModal
+    applicationId={applicationId}
+    onClose={() => setShowAddBorrower(false)}
+    onSuccess={() => {
+      setShowAddBorrower(false);
+      loadApplication();
+    }}
+  />
+)}
+
+{/* Status Change Modal */}
+{showStatusChange && (
+  <StatusChangeModal
+    applicationId={applicationId}
+    currentStatus={application.status as any}
+    onClose={() => setShowStatusChange(false)}
+    onSuccess={() => {
+      setShowStatusChange(false);
+      loadApplication();
+    }}
+  />
+)}
+
     </div>
   );
 }

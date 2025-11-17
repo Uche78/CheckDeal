@@ -93,57 +93,48 @@ export async function createBorrower(borrower: BorrowerInsert): Promise<Borrower
     console.error('Error creating borrower:', error);
     throw error;
   }
+
+// ✅ Log activity
+  await logActivity(
+    borrower.application_id,
+    'borrower_added',
+    `${borrower.borrower_type === 'primary' ? 'Primary borrower' : 'Co-borrower'} added: ${borrower.full_name}`,
+    { borrower_id: data.id, borrower_type: borrower.borrower_type }
+  );
   
   return data;
 }
 
 /**
- * Update an existing borrower
+ * Update a borrower
  */
-export async function updateBorrower(id: string, updates: BorrowerUpdate): Promise<Borrower> {
+export async function updateBorrower(id: string, updates: Partial<BorrowerUpdate>): Promise<Borrower> {
   const broker = await getCurrentBroker();
   
   if (!broker) {
     throw new Error('Not authenticated');
   }
-  
-  // First get the borrower to find the application
-  const existingBorrower = await getBorrowerById(id);
-  
-  if (!existingBorrower) {
-    throw new Error('Borrower not found');
-  }
-  
-  // Verify the application belongs to this broker
-  const { data: application } = await supabase
-    .from('applications')
-    .select('id')
-    .eq('id', existingBorrower.application_id)
-    .eq('broker_id', broker.id)
-    .single();
-  
-  if (!application) {
-    throw new Error('Access denied');
-  }
-  
+
   const { data, error } = await supabase
     .from('borrowers')
-    .update(updates)
+    .update({
+      ...updates,
+      updated_at: new Date().toISOString(),
+    })
     .eq('id', id)
-    .is('deleted_at', null)
     .select()
     .single();
-  
+
   if (error) {
     console.error('Error updating borrower:', error);
     throw error;
   }
-  
+
   return data;
 }
 
 /**
- * Soft delete a borrower
+ * Delete a borrower (soft delete)
  */
 export async function deleteBorrower(id: string): Promise<void> {
   const broker = await getCurrentBroker();
@@ -151,34 +142,25 @@ export async function deleteBorrower(id: string): Promise<void> {
   if (!broker) {
     throw new Error('Not authenticated');
   }
-  
-  // First get the borrower to find the application
-  const existingBorrower = await getBorrowerById(id);
-  
-  if (!existingBorrower) {
-    throw new Error('Borrower not found');
-  }
-  
-  // Verify the application belongs to this broker
-  const { data: application } = await supabase
-    .from('applications')
-    .select('id')
-    .eq('id', existingBorrower.application_id)
-    .eq('broker_id', broker.id)
-    .single();
-  
-  if (!application) {
-    throw new Error('Access denied');
-  }
-  
+
+  // Soft delete - set deleted_at timestamp
   const { error } = await supabase
     .from('borrowers')
     .update({ deleted_at: new Date().toISOString() })
     .eq('id', id);
-  
+
   if (error) {
     console.error('Error deleting borrower:', error);
     throw error;
+  }
+// ✅ Log activity
+  if (borrower) {
+    await logActivity(
+      borrower.application_id,
+      'borrower_removed',
+      `${borrower.borrower_type === 'primary' ? 'Primary borrower' : 'Co-borrower'} removed: ${borrower.full_name}`,
+      { borrower_id: id }
+    );
   }
 }
 

@@ -208,14 +208,12 @@ export type ApplicationWithBorrowers = Application & {
 }
 
 // Type for application statistics
-export type ApplicationStats = {
-  total: number
-  draft: number
-  collecting: number
-  organized: number
-  analyzed: number
-  submitted: number
-  approved: number
-  rejected: number
-  complete: number
+
+export interface ApplicationStats {
+  total: number;
+  pending: number;
+  in_progress: number;
+  approved: number;
+  denied: number;
+  flagged: number;
 }
