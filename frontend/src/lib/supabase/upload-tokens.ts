@@ -1,129 +1,155 @@
-import type { UploadToken } from '../types/database';
-import { getSupabaseClient } from '../supabase-client';
+import { supabase } from './client';
+import type { UploadToken, UploadTokenInsert } from '../types/database';
 
 /**
- * Generate a new upload token for an application
+ * Generate a random 32-character token
  */
-export async function generateUploadToken(
+function generateToken(): string {
+  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+  let token = '';
+  for (let i = 0; i < 32; i++) {
+    token += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+  return token;
+}
+
+/**
+ * Create a new upload token
+ */
+export async function createUploadToken(
   applicationId: string,
-  expiresInDays: number = 7,
+  expirationDays: number,
   maxUploads: number | null = null
-): Promise<{
-  data: { token: UploadToken; upload_url: string } | null;
-  error: Error | null;
-}> {
+): Promise<{ data: UploadToken | null; error: any }> {
   try {
-    const response = await fetch('/api/upload-tokens/generate', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        application_id: applicationId,
-        expires_in_days: expiresInDays,
-        max_uploads: maxUploads
-      })
-    });
-
-    const result = await response.json();
-
-    if (!response.ok) {
-      return {
-        data: null,
-        error: new Error(result.error || 'Failed to generate token')
-      };
+    // Get current user
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      return { data: null, error: new Error('Not authenticated') };
     }
 
-    return {
-      data: {
-        token: result.token,
-        upload_url: result.upload_url
-      },
-      error: null
-    };
+    // Get broker ID
+    const { data: broker } = await supabase
+      .from('brokers')
+      .select('id')
+      .eq('user_id', user.id)
+      .single();
+
+    if (!broker) {
+      return { data: null, error: new Error('Broker profile not found') };
+    }
+
+    // Calculate expiration date
+    const expiresAt = new Date();
+    expiresAt.setDate(expiresAt.getDate() + expirationDays);
+
+    // Generate unique token
+    const token = generateToken();
+
+    // Create token in database
+    const { data, error } = await supabase
+      .from('upload_tokens')
+      .insert({
+        application_id: applicationId,
+        token: token,
+        expires_at: expiresAt.toISOString(),
+        max_uploads: maxUploads,
+        created_by: broker.id,
+      })
+      .select()
+      .single();
+
+    return { data, error };
   } catch (error) {
-    return {
-      data: null,
-      error: error instanceof Error ? error : new Error('Failed to generate token')
-    };
+    console.error('Error creating upload token:', error);
+    return { data: null, error };
   }
 }
 
 /**
- * Validate an upload token
+ * Get all upload tokens for an application
  */
-export async function validateUploadToken(token: string): Promise<{
-  data: { valid: boolean; token?: UploadToken } | null;
-  error: Error | null;
-}> {
+export async function getUploadTokens(
+  applicationId: string
+): Promise<{ data: UploadToken[] | null; error: any }> {
   try {
-    const response = await fetch('/api/upload-tokens/validate', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ token })
-    });
-
-    const result = await response.json();
-
-    return {
-      data: {
-        valid: result.valid,
-        token: result.token
-      },
-      error: null
-    };
-  } catch (error) {
-    return {
-      data: null,
-      error: error instanceof Error ? error : new Error('Failed to validate token')
-    };
-  }
-}
-
-/**
- * Get all tokens for an application
- */
-export async function getApplicationTokens(applicationId: string): Promise<{
-  data: UploadToken[] | null;
-  error: Error | null;
-}> {
-  try {
-    const supabase = getSupabaseClient();
-    
     const { data, error } = await supabase
       .from('upload_tokens')
       .select('*')
       .eq('application_id', applicationId)
       .order('created_at', { ascending: false });
 
-    if (error) throw error;
-
-    return { data, error: null };
+    return { data, error };
   } catch (error) {
-    return {
-      data: null,
-      error: error instanceof Error ? error : new Error('Failed to fetch tokens')
-    };
+    console.error('Error fetching upload tokens:', error);
+    return { data: null, error };
   }
 }
 
 /**
- * Increment upload count for a token
+ * Get a single upload token by ID
  */
-export async function incrementTokenUploadCount(tokenId: string): Promise<{
-  error: Error | null;
-}> {
+export async function getUploadToken(
+  tokenId: string
+): Promise<{ data: UploadToken | null; error: any }> {
   try {
-    const supabase = getSupabaseClient();
-    
-    const { error } = await supabase.rpc('increment_token_uploads', {
-      token_id: tokenId
-    });
+    const { data, error } = await supabase
+      .from('upload_tokens')
+      .select('*')
+      .eq('id', tokenId)
+      .single();
 
-    if (error) throw error;
-
-    return { error: null };
+    return { data, error };
   } catch (error) {
-    return {
-      error: error instanceof Error ? error : new Error('Failed to update token')
-    };
+    console.error('Error fetching upload token:', error);
+    return { data: null, error };
+  }
+}
+
+/**
+ * Delete an upload token
+ */
+export async function deleteUploadToken(
+  tokenId: string
+): Promise<{ error: any }> {
+  try {
+    const { error } = await supabase
+      .from('upload_tokens')
+      .delete()
+      .eq('id', tokenId);
+
+    return { error };
+  } catch (error) {
+    console.error('Error deleting upload token:', error);
+    return { error };
+  }
+}
+
+/**
+ * Validate a token and check if it's usable
+ */
+export async function validateUploadToken(
+  token: string
+): Promise<{ data: UploadToken | null; error: any; isValid: boolean }> {
+  try {
+    const { data, error } = await supabase
+      .from('upload_tokens')
+      .select('*')
+      .eq('token', token)
+      .single();
+
+    if (error || !data) {
+      return { data: null, error, isValid: false };
+    }
+
+    // Check if token is valid
+    const isExpired = new Date(data.expires_at) < new Date();
+    const isExhausted = data.max_uploads !== null && data.uploads_count >= data.max_uploads;
+    const isValid = !isExpired && !isExhausted && !data.is_used;
+
+    return { data, error: null, isValid };
+  } catch (error) {
+    console.error('Error validating token:', error);
+    return { data: null, error, isValid: false };
   }
 }

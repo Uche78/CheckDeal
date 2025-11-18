@@ -1,0 +1,43 @@
+---
+import DashboardLayout from '../../../layouts/DashboardLayout.astro';
+import ProtectedRoute from '../../../components/auth/ProtectedRoute.tsx';
+import UploadLinkManager from '../../../components/applications/UploadLinkManager.tsx';
+
+// Enable server-side rendering for this dynamic route
+export const prerender = false;
+
+// Get the application ID from the URL
+const { id } = Astro.params;
+
+// Set page title
+const title = `Generate Upload Link - Application #${id}`;
+---
+
+<DashboardLayout title={title}>
+  <ProtectedRoute client:only="react">
+    <div class="p-6 max-w-3xl mx-auto">
+      {/* Header */}
+      <div class="mb-6">
+        <a 
+          href={`/applications/${id}`}
+          class="text-primary-600 hover:text-primary-700 flex items-center gap-2 mb-4"
+        >
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+          </svg>
+          Back to Application
+        </a>
+        
+        <h1 class="text-2xl font-bold text-gray-900">
+          Generate Upload Link
+        </h1>
+        <p class="text-gray-600 mt-1">
+          Application #{id}
+        </p>
+      </div>
+
+      {/* Main Content */}
+      <UploadLinkManager applicationId={id} client:load />
+    </div>
+  </ProtectedRoute>
+</DashboardLayout>
