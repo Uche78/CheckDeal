@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { getDocuments, deleteDocument } from '../../lib/supabase/documents';
 import type { Document } from '../../lib/types/database';
 import DocumentCard from './DocumentCard';
-import DocumentPreview from './DocumentPreview';
+import DocumentPreviewModal from './DocumentPreviewModal';
 
 interface DocumentsListProps {
   applicationId: string;
@@ -356,13 +356,11 @@ export default function DocumentsList({ applicationId }: DocumentsListProps) {
         </div>
       )}
 
-      {/* Document Preview Modal */}
+{/* Document Preview Modal */}
       {previewDocument && (
-        <DocumentPreview
+        <DocumentPreviewModal
           document={previewDocument}
-          documents={filteredDocuments}
           onClose={() => setPreviewDocument(null)}
-          onNavigate={handlePreviewNavigate}
         />
       )}
     </div>
