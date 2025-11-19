@@ -1,5 +1,9 @@
 import type { APIRoute } from 'astro';
-import { createServerClient } from '../../lib/supabase-client';
+import { createClient } from '@supabase/supabase-js';
+
+const supabaseUrl = import.meta.env.PUBLIC_SUPABASE_URL;
+const supabaseAnonKey = import.meta.env.PUBLIC_SUPABASE_ANON_KEY;
+const supabaseServiceKey = import.meta.env.SUPABASE_SERVICE_ROLE_KEY;
 
 // Allowed file types
 const ALLOWED_TYPES = [
@@ -11,37 +15,20 @@ const ALLOWED_TYPES = [
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB in bytes
 
-export const POST: APIRoute = async ({ request, cookies }) => {
+export const POST: APIRoute = async ({ request }) => {
   try {
-    // Get Supabase client
-    const supabase = createServerClient(cookies);
-
-    // Check authentication
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
-    
-    if (authError || !user) {
-      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
-        status: 401,
-        headers: { 'Content-Type': 'application/json' }
-      });
-    }
-
     // Parse form data
     const formData = await request.formData();
     const file = formData.get('file') as File;
     const applicationId = formData.get('application_id') as string;
-    const uploadedBy = formData.get('uploaded_by') as 'broker' | 'borrower';
+    const uploadedBy = formData.get('uploaded_by') as string;
+    const token = formData.get('token') as string | null; // Optional token for borrower uploads
 
     // Validate inputs
-    if (!file) {
-      return new Response(JSON.stringify({ error: 'No file provided' }), {
-        status: 400,
-        headers: { 'Content-Type': 'application/json' }
-      });
-    }
-
-    if (!applicationId) {
-      return new Response(JSON.stringify({ error: 'Application ID required' }), {
+    if (!file || !applicationId) {
+      return new Response(JSON.stringify({ 
+        error: 'Missing required fields' 
+      }), {
         status: 400,
         headers: { 'Content-Type': 'application/json' }
       });
@@ -50,7 +37,7 @@ export const POST: APIRoute = async ({ request, cookies }) => {
     // Validate file type
     if (!ALLOWED_TYPES.includes(file.type)) {
       return new Response(JSON.stringify({ 
-        error: 'Invalid file type. Only PDF and images (JPG, PNG) are allowed.' 
+        error: 'Invalid file type. Only PDF, JPG, and PNG files are allowed.' 
       }), {
         status: 400,
         headers: { 'Content-Type': 'application/json' }
@@ -67,52 +54,76 @@ export const POST: APIRoute = async ({ request, cookies }) => {
       });
     }
 
-    // Verify broker owns this application
-    const { data: application, error: appError } = await supabase
-      .from('applications')
-      .select('id, broker_id')
-      .eq('id', applicationId)
-      .single();
+    // Use service role for database operations (bypasses RLS)
+    const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    if (appError || !application) {
-      return new Response(JSON.stringify({ error: 'Application not found' }), {
-        status: 404,
-        headers: { 'Content-Type': 'application/json' }
-      });
+    // If token provided (borrower upload), validate it
+    if (token) {
+      const { data: uploadToken, error: tokenError } = await supabase
+        .from('upload_tokens')
+        .select('*')
+        .eq('token', token)
+        .eq('application_id', applicationId)
+        .single();
+
+      if (tokenError || !uploadToken) {
+        return new Response(JSON.stringify({ 
+          error: 'Invalid or expired upload token' 
+        }), {
+          status: 403,
+          headers: { 'Content-Type': 'application/json' }
+        });
+      }
+
+      // Check if token is expired
+      const now = new Date();
+      const expiresAt = new Date(uploadToken.expires_at);
+      
+      if (expiresAt < now) {
+        return new Response(JSON.stringify({ 
+          error: 'Upload token has expired' 
+        }), {
+          status: 410,
+          headers: { 'Content-Type': 'application/json' }
+        });
+      }
+
+      // Check upload limit
+      if (uploadToken.max_uploads !== null && uploadToken.uploads_count >= uploadToken.max_uploads) {
+        return new Response(JSON.stringify({ 
+          error: 'Upload limit reached for this token' 
+        }), {
+          status: 410,
+          headers: { 'Content-Type': 'application/json' }
+        });
+      }
     }
 
-    if (application.broker_id !== user.id) {
-      return new Response(JSON.stringify({ error: 'Unauthorized access to application' }), {
-        status: 403,
-        headers: { 'Content-Type': 'application/json' }
-      });
-    }
-
-    // Generate unique file name to avoid collisions
+    // Generate unique filename
     const timestamp = Date.now();
-    const sanitizedFileName = file.name.replace(/[^a-zA-Z0-9.-]/g, '_');
-    const uniqueFileName = `${timestamp}_${sanitizedFileName}`;
-    
-    // Storage path: application_id/unique_filename
-    const filePath = `${applicationId}/${uniqueFileName}`;
+    const randomString = Math.random().toString(36).substring(2, 15);
+    const fileExt = file.name.split('.').pop();
+    const fileName = `${timestamp}-${randomString}.${fileExt}`;
+    const filePath = `${applicationId}/${fileName}`;
 
-    // Convert File to ArrayBuffer
-    const arrayBuffer = await file.arrayBuffer();
-    const fileBuffer = new Uint8Array(arrayBuffer);
+    // Convert File to ArrayBuffer for upload
+    const fileBuffer = await file.arrayBuffer();
+    const fileData = new Uint8Array(fileBuffer);
 
     // Upload to Supabase Storage
-    const { data: uploadData, error: uploadError } = await supabase.storage
+    const { error: uploadError } = await supabase.storage
       .from('mortgage-documents')
-      .upload(filePath, fileBuffer, {
+      .upload(filePath, fileData, {
         contentType: file.type,
+        cacheControl: '3600',
         upsert: false
       });
 
     if (uploadError) {
       console.error('Storage upload error:', uploadError);
       return new Response(JSON.stringify({ 
-        error: 'Failed to upload file',
-        details: uploadError.message 
+        error: 'Failed to upload file to storage',
+        details: uploadError.message
       }), {
         status: 500,
         headers: { 'Content-Type': 'application/json' }
@@ -126,10 +137,11 @@ export const POST: APIRoute = async ({ request, cookies }) => {
         application_id: applicationId,
         file_name: file.name,
         file_path: filePath,
-        file_size: file.size,
         file_type: file.type,
-        uploaded_by: uploadedBy || 'broker',
-        status: 'new'
+        file_size: file.size,
+        uploaded_by: uploadedBy as 'broker' | 'borrower',
+        status: 'pending',
+        category: 'uncategorized'
       })
       .select()
       .single();
@@ -137,31 +149,43 @@ export const POST: APIRoute = async ({ request, cookies }) => {
     if (dbError) {
       console.error('Database insert error:', dbError);
       
-      // Cleanup: Delete uploaded file if database insert fails
+      // Cleanup: delete the uploaded file from storage
       await supabase.storage
         .from('mortgage-documents')
         .remove([filePath]);
 
       return new Response(JSON.stringify({ 
         error: 'Failed to save document metadata',
-        details: dbError.message 
+        details: dbError.message
       }), {
         status: 500,
         headers: { 'Content-Type': 'application/json' }
       });
     }
 
-    // Generate signed URL for immediate access (valid for 1 hour)
-    const { data: urlData } = await supabase.storage
-      .from('mortgage-documents')
-      .createSignedUrl(filePath, 3600);
+    // If borrower upload with token, increment upload count
+if (token) {
+  // First get the current count
+  const { data: currentToken } = await supabase
+    .from('upload_tokens')
+    .select('uploads_count')
+    .eq('token', token)
+    .single();
+
+  if (currentToken) {
+    await supabase
+      .from('upload_tokens')
+      .update({ 
+        uploads_count: currentToken.uploads_count + 1,
+        used_at: new Date().toISOString()
+      })
+      .eq('token', token);
+  }
+}
 
     return new Response(JSON.stringify({ 
       success: true,
-      document: {
-        ...document,
-        signedUrl: urlData?.signedUrl
-      },
+      document: document,
       message: 'File uploaded successfully'
     }), {
       status: 200,

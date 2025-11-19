@@ -7,13 +7,19 @@ import { supabase } from '../supabase-client';
 export async function uploadDocument(
   file: File,
   applicationId: string,
-  uploadedBy: 'broker' | 'borrower' = 'broker'
+  uploadedBy: 'broker' | 'borrower' = 'broker',
+  token?: string // Add token parameter
 ): Promise<{ data: Document | null; error: Error | null }> {
   try {
     const formData = new FormData();
     formData.append('file', file);
     formData.append('application_id', applicationId);
     formData.append('uploaded_by', uploadedBy);
+    
+    // Add token if provided (for borrower uploads)
+    if (token) {
+      formData.append('token', token);
+    }
 
     const response = await fetch('/api/documents/upload', {
       method: 'POST',
@@ -40,6 +46,7 @@ export async function uploadDocument(
     };
   }
 }
+
 
 /**
  * Get all documents for an application

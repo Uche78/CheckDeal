@@ -9,11 +9,13 @@ interface UploadLinkManagerProps {
 export default function UploadLinkManager({ applicationId }: UploadLinkManagerProps) {
   const [generatedToken, setGeneratedToken] = useState<string | null>(null);
   const [generatedTokenId, setGeneratedTokenId] = useState<string | null>(null);
+  const [tokenData, setTokenData] = useState<any>(null);
   const [showDisplay, setShowDisplay] = useState<boolean>(false);
 
-  const handleTokenGenerated = (token: string, tokenId: string) => {
+  const handleTokenGenerated = (token: string, tokenId: string, data?: any) => {
     setGeneratedToken(token);
     setGeneratedTokenId(tokenId);
+    setTokenData(data);
     setShowDisplay(true);
   };
 
@@ -25,7 +27,8 @@ export default function UploadLinkManager({ applicationId }: UploadLinkManagerPr
   if (showDisplay && generatedToken) {
     return (
       <UploadTokenDisplay 
-        token={generatedToken} 
+        token={generatedToken}
+        tokenData={tokenData}
         onClose={handleClose} 
       />
     );

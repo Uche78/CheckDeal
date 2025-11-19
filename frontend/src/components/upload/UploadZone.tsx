@@ -82,7 +82,7 @@ export default function UploadZone({ applicationId, token, onUploadComplete }: U
       }, 200);
 
       // Upload to API
-      const { data, error } = await uploadDocument(file, applicationId, 'borrower');
+      const { data, error } = await uploadDocument(file, applicationId, 'borrower', token);
 
       clearInterval(progressInterval);
 

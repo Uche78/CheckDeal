@@ -3,7 +3,7 @@ import { createUploadToken } from '../../lib/supabase/upload-tokens';
 
 interface GenerateUploadTokenProps {
   applicationId: string;
-  onTokenGenerated: (token: string, tokenId: string) => void;
+  onTokenGenerated: (token: string, tokenId: string, tokenData?: any) => void;
 }
 
 export default function GenerateUploadToken({ 
@@ -50,8 +50,8 @@ export default function GenerateUploadToken({
         return;
       }
 
-      // Success - notify parent component
-      onTokenGenerated(data.token, data.id);
+// Success - notify parent component with full token data
+onTokenGenerated(data.token, data.id, data);
     } catch (err) {
       setError('An unexpected error occurred');
       console.error('Generate token error:', err);
