@@ -3,33 +3,30 @@ import { createClient } from '@supabase/supabase-js';
 
 const supabaseUrl = import.meta.env.PUBLIC_SUPABASE_URL;
 const supabaseAnonKey = import.meta.env.PUBLIC_SUPABASE_ANON_KEY;
+const supabaseServiceKey = import.meta.env.SUPABASE_SERVICE_ROLE_KEY;
 
 export const POST: APIRoute = async ({ request }) => {
   try {
-    // Create a client with anon key (for public access)
-    const supabase = createClient(supabaseUrl, supabaseAnonKey);
+    // Create a client with anon key for token validation
+    const supabaseAnon = createClient(supabaseUrl, supabaseAnonKey);
 
     const body = await request.json();
     const { token } = body;
 
     if (!token) {
-      return new Response(JSON.stringify({ error: 'Token required' }), {
+      return new Response(JSON.stringify({ 
+        valid: false,
+        error: 'Token required' 
+      }), {
         status: 400,
         headers: { 'Content-Type': 'application/json' }
       });
     }
 
-    // Validate token
-    const { data: uploadToken, error: tokenError } = await supabase
+    // Step 1: Validate token (anonymous access)
+    const { data: uploadToken, error: tokenError } = await supabaseAnon
       .from('upload_tokens')
-      .select(`
-        *,
-        applications:application_id (
-          id,
-          borrower_name,
-          property_address
-        )
-      `)
+      .select('*')
       .eq('token', token)
       .single();
 
@@ -68,9 +65,52 @@ export const POST: APIRoute = async ({ request }) => {
       });
     }
 
+    // Step 2: Fetch application data using service role (bypasses RLS)
+    const supabaseService = createClient(supabaseUrl, supabaseServiceKey);
+    
+    const { data: application, error: appError } = await supabaseService
+      .from('applications')
+      .select('id, property_address')
+      .eq('id', uploadToken.application_id)
+      .single();
+
+    if (appError || !application) {
+      console.error('Error fetching application:', appError);
+      // Still return valid token, just without application data
+      return new Response(JSON.stringify({ 
+        valid: true,
+        token: {
+          ...uploadToken,
+          applications: null
+        },
+        message: 'Token is valid'
+      }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' }
+      });
+    }
+
+    // Fetch borrowers for this application
+const { data: borrowers } = await supabaseService
+  .from('borrowers')
+  .select('full_name')
+  .eq('application_id', application.id)
+  .limit(1)
+  .single();
+
+const borrowerName = borrowers?.full_name || 'Applicant';
+
+
     return new Response(JSON.stringify({ 
       valid: true,
-      token: uploadToken,
+      token: {
+        ...uploadToken,
+        applications: {
+          id: application.id,
+          borrower_name: borrowerName,
+          property_address: application.property_address
+        }
+      },
       message: 'Token is valid'
     }), {
       status: 200,
@@ -80,6 +120,7 @@ export const POST: APIRoute = async ({ request }) => {
   } catch (error) {
     console.error('Validate token error:', error);
     return new Response(JSON.stringify({ 
+      valid: false,
       error: 'Internal server error',
       details: error instanceof Error ? error.message : 'Unknown error'
     }), {

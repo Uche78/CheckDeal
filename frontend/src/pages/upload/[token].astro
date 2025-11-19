@@ -1,7 +1,8 @@
 ---
 import UploadLayout from '../../layouts/UploadLayout.astro';
 import { validateUploadToken } from '../../lib/supabase/upload-tokens';
-import UploadContainer from '../../components/upload/UploadContainer';
+import UploadZone from '../../components/upload/UploadZone';
+import FileList from '../../components/upload/FileList';
 
 // Get token from URL
 const { token } = Astro.params;
