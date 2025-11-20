@@ -58,6 +58,9 @@ export const POST: APIRoute = async ({ request }) => {
 
     let extractedText = '';
     let structuredData = null;
+    let documentType = null;
+    let documentCategory = 'uncategorized';
+
 
     // Use Anthropic API for text extraction
     if (anthropicApiKey) {
@@ -170,7 +173,7 @@ IMPORTANT:
           ? message.content[0].text 
           : '';
         
-        // Try to parse JSON response
+      // Try to parse JSON response
         try {
           // Remove markdown code blocks if present
           let jsonText = responseText.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
@@ -178,13 +181,41 @@ IMPORTANT:
           
           extractedText = parsed.full_text || responseText;
           structuredData = parsed.structured_data || null;
+          documentType = parsed.document_type || null;
+          
+          // Map document types to categories
+          const categoryMap: Record<string, string> = {
+            'bank_statement': 'assets_liabilities',
+            'pay_stub': 'income_employment',
+            'tax_return': 'income_employment',
+            'T4': 'income_employment',
+            'T4A': 'income_employment',
+            'NOA': 'income_employment',
+            'employment_letter': 'income_employment',
+            'mortgage_statement': 'property',
+            'property_tax': 'property',
+            'home_appraisal': 'property',
+            'purchase_agreement': 'property',
+            'drivers_license': 'borrower_details',
+            'passport': 'borrower_details',
+            'credit_report': 'assets_liabilities',
+            'investment_statement': 'assets_liabilities',
+            'loan_statement': 'assets_liabilities'
+          };
+          
+          if (documentType) {
+            documentCategory = categoryMap[documentType] || 'uncategorized';
+          }
           
           console.log('Extracted text length:', extractedText.length);
+          console.log('Document type:', documentType);
+          console.log('Document category:', documentCategory);
           console.log('Structured data:', JSON.stringify(structuredData, null, 2));
         } catch (parseError) {
           console.error('JSON parsing failed, using raw text:', parseError);
           extractedText = responseText;
         }
+
 
       } catch (error) {
         console.error('Anthropic API error details:', error);
@@ -196,15 +227,26 @@ IMPORTANT:
       extractedText = '[Text extraction not configured - please add ANTHROPIC_API_KEY to environment]';
     }
 
-    // Save extracted text and structured data to database
+    // Save extracted text, structured data, and classification to database
+    const updateData: any = {
+      extracted_text: extractedText,
+      extracted_data: structuredData,
+      status: 'analyzed'
+    };
+    
+    if (documentType) {
+      updateData.document_type = documentType;
+    }
+    
+    if (documentCategory && documentCategory !== 'uncategorized') {
+      updateData.category = documentCategory;
+    }
+    
     const { error: updateError } = await supabase
       .from('documents')
-      .update({
-        extracted_text: extractedText,
-        extracted_data: structuredData,
-        status: 'clean'
-      })
+      .update(updateData)
       .eq('id', document_id);
+
 
     if (updateError) {
       return new Response(JSON.stringify({ 

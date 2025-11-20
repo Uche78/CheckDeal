@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import type { Document } from '../../lib/types/database';
 import { deleteDocument, getDocumentUrl, downloadDocument } from '../../lib/supabase/documents';
+import DocumentTypeBadge from './DocumentTypeBadge';
 
 interface DocumentCardProps {
   document: Document;
@@ -186,6 +187,16 @@ export default function DocumentCard({
         <div className="mb-3">
           {getStatusBadge()}
         </div>
+
+        {/* Document Type Badge */}
+        {(document.document_type || document.category) && (
+          <div className="mb-3">
+            <DocumentTypeBadge 
+              documentType={document.document_type} 
+              category={document.category}
+            />
+          </div>
+        )}
 
         {/* Metadata */}
         <div className="space-y-1.5 text-xs text-gray-500 mb-4">

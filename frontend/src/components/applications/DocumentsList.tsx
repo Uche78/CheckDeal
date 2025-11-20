@@ -3,6 +3,7 @@ import { getDocuments, deleteDocument } from '../../lib/supabase/documents';
 import type { Document } from '../../lib/types/database';
 import DocumentCard from './DocumentCard';
 import DocumentPreviewModal from './DocumentPreviewModal';
+import DocumentTypeBadge from './DocumentTypeBadge';
 
 interface DocumentsListProps {
   applicationId: string;
@@ -13,7 +14,9 @@ export default function DocumentsList({ applicationId }: DocumentsListProps) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [filter, setFilter] = useState<'all' | 'new' | 'analyzed' | 'fraud_alert'>('all');
+  const [typeFilter, setTypeFilter] = useState<string>('all');
   const [previewDocument, setPreviewDocument] = useState<Document | null>(null);
+  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   
   // Task 3.12: Selection state
   const [selectionMode, setSelectionMode] = useState(false);
@@ -39,10 +42,17 @@ export default function DocumentsList({ applicationId }: DocumentsListProps) {
     setLoading(false);
   };
 
-  // Filter documents
-  const filteredDocuments = filter === 'all' 
+  // Filter documents by status and type
+  let filteredDocuments = filter === 'all' 
     ? documents 
     : documents.filter(doc => doc.status === filter);
+  
+  // Apply type filter
+  if (typeFilter !== 'all') {
+    filteredDocuments = filteredDocuments.filter(doc => 
+      doc.document_type === typeFilter || doc.category === typeFilter
+    );
+  }
 
   // Get counts by status
   const counts = {
@@ -242,21 +252,89 @@ export default function DocumentsList({ applicationId }: DocumentsListProps) {
         </nav>
       </div>
 
+      {/* Document Type Filter */}
+      <div className="flex items-center space-x-4">
+        <label className="text-sm font-medium text-gray-700">Filter by Type:</label>
+        <select
+          value={typeFilter}
+          onChange={(e) => setTypeFilter(e.target.value)}
+          className="px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+        >
+          <option value="all">All Types</option>
+          <option value="bank_statement">Bank Statements</option>
+          <option value="pay_stub">Pay Stubs</option>
+          <option value="tax_return">Tax Returns</option>
+          <option value="T4">T4s</option>
+          <option value="employment_letter">Employment Letters</option>
+          <option value="mortgage_statement">Mortgage Statements</option>
+          <option value="credit_report">Credit Reports</option>
+          <option value="income_employment">Income/Employment</option>
+          <option value="property">Property</option>
+          <option value="assets_liabilities">Assets/Liabilities</option>
+          <option value="borrower_details">Borrower Details</option>
+        </select>
+      </div>
+
+        {/* View Toggle */}
+        <div className="flex items-center space-x-2 border border-gray-300 rounded-md p-1">
+          <button
+            onClick={() => setViewMode('grid')}
+            className={`px-3 py-1.5 rounded text-sm font-medium transition-colors ${
+              viewMode === 'grid'
+                ? 'bg-primary-600 text-white'
+                : 'text-gray-600 hover:text-gray-900'
+            }`}
+            title="Grid View"
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
+            </svg>
+          </button>
+          <button
+            onClick={() => setViewMode('list')}
+            className={`px-3 py-1.5 rounded text-sm font-medium transition-colors ${
+              viewMode === 'list'
+                ? 'bg-primary-600 text-white'
+                : 'text-gray-600 hover:text-gray-900'
+            }`}
+            title="List View"
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+            </svg>
+          </button>
+        </div>
+      
+
       {/* Task 3.12: Bulk Actions Toolbar */}
-      <div className="flex items-center justify-between">
+       <div className="flex items-center justify-between">
         <div className="flex items-center space-x-4">
           {!selectionMode ? (
-            <button
-              onClick={toggleSelectionMode}
-              className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-            >
-              <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
-              </svg>
-              Select Documents
-            </button>
+            <>
+              <button
+                onClick={toggleSelectionMode}
+                className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+              >
+                <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
+                </svg>
+                Select Documents
+              </button>
+              
+              {/* Refresh Button */}
+              <button
+                onClick={loadDocuments}
+                className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+              >
+                <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                </svg>
+                Refresh
+              </button>
+            </>
           ) : (
             <>
+            
               {/* Selection Mode Active */}
               <button
                 onClick={toggleSelectAll}
@@ -333,28 +411,90 @@ export default function DocumentsList({ applicationId }: DocumentsListProps) {
         </div>
       )}
 
-      {/* Documents Grid */}
+      {/* Documents Grid/List View */}
       {filteredDocuments.length > 0 && (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {filteredDocuments.map((doc) => (
-            <DocumentCard
-              key={doc.id}
-              document={doc}
-              selectionMode={selectionMode}
-              isSelected={selectedIds.has(doc.id)}
-              onSelect={() => toggleDocumentSelection(doc.id)}
-              onDelete={(documentId) => {
-                setDocuments(prev => prev.filter(d => d.id !== documentId));
-              }}
-              onView={(document) => {
-                if (!selectionMode) {
-                  setPreviewDocument(document);
-                }
-              }}
-            />
-          ))}
-        </div>
+        <>
+          {viewMode === 'grid' ? (
+            // Grid View
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {filteredDocuments.map((doc) => (
+                <DocumentCard
+                  key={doc.id}
+                  document={doc}
+                  selectionMode={selectionMode}
+                  isSelected={selectedIds.has(doc.id)}
+                  onSelect={() => toggleDocumentSelection(doc.id)}
+                  onDelete={(documentId) => {
+                    setDocuments(prev => prev.filter(d => d.id !== documentId));
+                  }}
+                  onView={(document) => {
+                    if (!selectionMode) {
+                      setPreviewDocument(document);
+                    }
+                  }}
+                />
+              ))}
+            </div>
+          ) : (
+            // List View
+            <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
+              <table className="min-w-full divide-y divide-gray-200">
+                <thead className="bg-gray-50">
+                  <tr>
+                    {selectionMode && (
+                      <th className="w-12 px-4 py-3">
+                        <input
+                          type="checkbox"
+                          checked={selectedIds.size === filteredDocuments.length}
+                          onChange={toggleSelectAll}
+                          className="w-4 h-4 text-primary-600 border-gray-300 rounded focus:ring-primary-500"
+                        />
+                      </th>
+                    )}
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Document
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Type
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Status
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Size
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Uploaded
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Uploaded By
+                    </th>
+                    <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Actions
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="bg-white divide-y divide-gray-200">
+                  {filteredDocuments.map((doc) => (
+                    <DocumentListRow
+                      key={doc.id}
+                      document={doc}
+                      selectionMode={selectionMode}
+                      isSelected={selectedIds.has(doc.id)}
+                      onSelect={() => toggleDocumentSelection(doc.id)}
+                      onView={() => setPreviewDocument(doc)}
+                      onDelete={(documentId) => {
+                        setDocuments(prev => prev.filter(d => d.id !== documentId));
+                      }}
+                    />
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </>
       )}
+
 
 {/* Document Preview Modal */}
       {previewDocument && (
@@ -364,5 +504,198 @@ export default function DocumentsList({ applicationId }: DocumentsListProps) {
         />
       )}
     </div>
+  );
+}
+
+// List Row Component
+interface DocumentListRowProps {
+  document: Document;
+  selectionMode: boolean;
+  isSelected: boolean;
+  onSelect: () => void;
+  onView: () => void;
+  onDelete: (id: string) => void;
+}
+
+function DocumentListRow({ 
+  document, 
+  selectionMode, 
+  isSelected, 
+  onSelect, 
+  onView,
+  onDelete 
+}: DocumentListRowProps) {
+  const [deleting, setDeleting] = useState(false);
+  const [downloading, setDownloading] = useState(false);
+
+  const handleDelete = async () => {
+    if (!confirm(`Are you sure you want to delete ${document.file_name}?`)) {
+      return;
+    }
+
+    setDeleting(true);
+    const { error } = await deleteDocument(document.id, document.file_path);
+
+    if (error) {
+      alert(`Failed to delete: ${error.message}`);
+    } else {
+      onDelete(document.id);
+    }
+
+    setDeleting(false);
+  };
+
+  const handleDownload = async () => {
+    setDownloading(true);
+    const { error } = await downloadDocument(document.file_path, document.file_name);
+    if (error) {
+      alert(`Failed to download: ${error.message}`);
+    }
+    setDownloading(false);
+  };
+
+  const formatFileSize = (bytes: number) => {
+    if (bytes === 0) return '0 Bytes';
+    const k = 1024;
+    const sizes = ['Bytes', 'KB', 'MB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return Math.round(bytes / Math.pow(k, i) * 100) / 100 + ' ' + sizes[i];
+  };
+
+  const formatDate = (dateString: string) => {
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffMs = now.getTime() - date.getTime();
+    const diffMins = Math.floor(diffMs / 60000);
+    const diffHours = Math.floor(diffMs / 3600000);
+    const diffDays = Math.floor(diffMs / 86400000);
+
+    if (diffMins < 1) return 'Just now';
+    if (diffMins < 60) return `${diffMins}m ago`;
+    if (diffHours < 24) return `${diffHours}h ago`;
+    if (diffDays < 7) return `${diffDays}d ago`;
+    
+    return date.toLocaleDateString('en-CA', {
+      month: 'short',
+      day: 'numeric',
+    });
+  };
+
+  const getStatusBadge = () => {
+    const badges = {
+      pending: { bg: 'bg-yellow-100', text: 'text-yellow-800', label: 'Pending' },
+      processing: { bg: 'bg-blue-100', text: 'text-blue-800', label: 'Processing' },
+      clean: { bg: 'bg-green-100', text: 'text-green-800', label: 'Clean' },
+      analyzed: { bg: 'bg-green-100', text: 'text-green-800', label: 'Analyzed' },
+      flagged: { bg: 'bg-red-100', text: 'text-red-800', label: 'Flagged' },
+      organized: { bg: 'bg-gray-100', text: 'text-gray-800', label: 'Organized' },
+    };
+
+    const badge = badges[document.status as keyof typeof badges] || badges.pending;
+
+    return (
+      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${badge.bg} ${badge.text}`}>
+        {badge.label}
+      </span>
+    );
+  };
+
+  return (
+    <tr 
+      className={`hover:bg-gray-50 ${isSelected ? 'bg-blue-50' : ''}`}
+      onClick={() => selectionMode && onSelect()}
+    >
+      {selectionMode && (
+        <td className="px-4 py-4">
+          <input
+            type="checkbox"
+            checked={isSelected}
+            onChange={onSelect}
+            onClick={(e) => e.stopPropagation()}
+            className="w-4 h-4 text-primary-600 border-gray-300 rounded focus:ring-primary-500"
+          />
+        </td>
+      )}
+      <td className="px-6 py-4">
+        <div className="flex items-center">
+          <div className="flex-shrink-0 h-10 w-10">
+            {document.file_type === 'application/pdf' ? (
+              <svg className="h-10 w-10 text-red-500" fill="currentColor" viewBox="0 0 20 20">
+                <path fillRule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4z" clipRule="evenodd" />
+              </svg>
+            ) : (
+              <svg className="h-10 w-10 text-blue-500" fill="currentColor" viewBox="0 0 20 20">
+                <path fillRule="evenodd" d="M4 3a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V5a2 2 0 00-2-2H4zm12 12H4l4-8 3 6 2-4 3 6z" clipRule="evenodd" />
+              </svg>
+            )}
+          </div>
+          <div className="ml-4">
+            <div className="text-sm font-medium text-gray-900 truncate max-w-xs" title={document.file_name}>
+              {document.file_name}
+            </div>
+          </div>
+        </div>
+      </td>
+      <td className="px-6 py-4">
+        <DocumentTypeBadge 
+          documentType={document.document_type} 
+          category={document.category}
+        />
+      </td>
+      <td className="px-6 py-4 whitespace-nowrap">
+        {getStatusBadge()}
+      </td>
+      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+        {formatFileSize(document.file_size)}
+      </td>
+      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+        {formatDate(document.uploaded_at)}
+      </td>
+      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 capitalize">
+        {document.uploaded_by}
+      </td>
+      <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+        <div className="flex items-center justify-end space-x-2">
+          <button
+            onClick={(e) => { e.stopPropagation(); onView(); }}
+            className="text-primary-600 hover:text-primary-900"
+            title="View"
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+            </svg>
+          </button>
+          <button
+            onClick={(e) => { e.stopPropagation(); handleDownload(); }}
+            disabled={downloading}
+            className="text-gray-600 hover:text-gray-900 disabled:opacity-50"
+            title="Download"
+          >
+            {downloading ? (
+              <div className="w-5 h-5 border-2 border-gray-600 border-t-transparent rounded-full animate-spin"></div>
+            ) : (
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+              </svg>
+            )}
+          </button>
+          <button
+            onClick={(e) => { e.stopPropagation(); handleDelete(); }}
+            disabled={deleting}
+            className="text-red-600 hover:text-red-900 disabled:opacity-50"
+            title="Delete"
+          >
+            {deleting ? (
+              <div className="w-5 h-5 border-2 border-red-600 border-t-transparent rounded-full animate-spin"></div>
+            ) : (
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+              </svg>
+            )}
+          </button>
+        </div>
+      </td>
+    </tr>
   );
 }
