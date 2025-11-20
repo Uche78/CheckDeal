@@ -183,6 +183,13 @@ if (token) {
   }
 }
 
+// Trigger text extraction in the background (don't wait for it)
+    fetch(`${new URL(request.url).origin}/api/documents/extract-text`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ document_id: document.id })
+    }).catch(err => console.error('Background extraction error:', err));
+
     return new Response(JSON.stringify({ 
       success: true,
       document: document,
