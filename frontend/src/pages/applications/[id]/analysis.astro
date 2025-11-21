@@ -1,0 +1,57 @@
+---
+import DashboardLayout from '../../../layouts/DashboardLayout.astro';
+import ProtectedRoute from '../../../components/auth/ProtectedRoute.tsx';
+import AnalysisDashboard from '../../../components/applications/AnalysisDashboard.tsx';
+
+// Enable server-side rendering for this dynamic route
+export const prerender = false;
+
+// Get the application ID from the URL
+const { id } = Astro.params;
+
+// Set page title
+const title = `Analysis Dashboard - Application #${id}`;
+---
+
+<DashboardLayout title={title}>
+  <ProtectedRoute client:only="react">
+    <div class="p-6 max-w-7xl mx-auto">
+      {/* Header */}
+      <div class="mb-6">
+        <a 
+          href={`/applications/${id}`}
+          class="text-primary-600 hover:text-primary-700 flex items-center gap-2 mb-4"
+        >
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+          </svg>
+          Back to Application
+        </a>
+        
+        <div class="flex items-center justify-between">
+          <div>
+            <h1 class="text-2xl font-bold text-gray-900">
+              Document Analysis Dashboard
+            </h1>
+            <p class="text-gray-600 mt-1">
+              Comprehensive overview of all analyzed documents and extracted data
+            </p>
+          </div>
+          
+          
+            href={`/applications/${id}/documents`}
+            class="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50"
+          >
+            <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+            </svg>
+            View All Documents
+          </a>
+        </div>
+      </div>
+
+      {/* Dashboard Component */}
+      <AnalysisDashboard applicationId={id} client:load />
+    </div>
+  </ProtectedRoute>
+</DashboardLayout>
