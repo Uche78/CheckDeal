@@ -4,6 +4,7 @@ import type { Document } from '../../lib/types/database';
 import DocumentCard from './DocumentCard';
 import DocumentPreviewModal from './DocumentPreviewModal';
 import DocumentTypeBadge from './DocumentTypeBadge';
+import UploadZone from '../upload/UploadZone';
 
 interface DocumentsListProps {
   applicationId: string;
@@ -17,6 +18,7 @@ export default function DocumentsList({ applicationId }: DocumentsListProps) {
   const [typeFilter, setTypeFilter] = useState<string>('all');
   const [previewDocument, setPreviewDocument] = useState<Document | null>(null);
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
+  const [showUploadModal, setShowUploadModal] = useState(false);
   
   // Task 3.12: Selection state
   const [selectionMode, setSelectionMode] = useState(false);
@@ -252,8 +254,22 @@ export default function DocumentsList({ applicationId }: DocumentsListProps) {
         </nav>
       </div>
 
+      {/* Upload Documents Button */}
+      <div className="mb-4">
+        <button
+          onClick={() => setShowUploadModal(true)}
+          className="inline-flex items-center px-4 py-2 bg-primary-600 text-white rounded-md hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 transition-colors"
+        >
+          <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+          </svg>
+          Upload Documents
+        </button>
+      </div>
+
       {/* Document Type Filter */}
-      <div className="flex items-center space-x-4">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center space-x-4">
         <label className="text-sm font-medium text-gray-700">Filter by Type:</label>
         <select
           value={typeFilter}
@@ -273,6 +289,7 @@ export default function DocumentsList({ applicationId }: DocumentsListProps) {
           <option value="assets_liabilities">Assets/Liabilities</option>
           <option value="borrower_details">Borrower Details</option>
         </select>
+      </div>
       </div>
 
         {/* View Toggle */}
@@ -495,6 +512,56 @@ export default function DocumentsList({ applicationId }: DocumentsListProps) {
         </>
       )}
 
+{/* Upload Modal */}
+      {showUploadModal && (
+        <div className="fixed inset-0 z-50 overflow-y-auto">
+          <div className="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:block sm:p-0">
+            <div 
+              className="fixed inset-0 transition-opacity bg-gray-500 bg-opacity-75"
+              onClick={() => setShowUploadModal(false)}
+            />
+
+            <div className="inline-block align-bottom bg-white rounded-lg px-4 pt-5 pb-4 text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-4xl sm:w-full sm:p-6">
+              <div className="absolute top-0 right-0 pt-4 pr-4">
+                <button
+                  onClick={() => setShowUploadModal(false)}
+                  className="bg-white rounded-md text-gray-400 hover:text-gray-500 focus:outline-none"
+                >
+                  <svg className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+
+              <div className="sm:flex sm:items-start">
+                <div className="mt-3 text-center sm:mt-0 sm:text-left w-full">
+                  <h3 className="text-lg leading-6 font-medium text-gray-900 mb-4">
+                    Upload Documents
+                  </h3>
+                  
+                  <UploadZone
+                    applicationId={applicationId}
+                    uploadedBy="broker"
+                    onUploadComplete={(doc) => {
+                      console.log('Document uploaded:', doc);
+                      loadDocuments(); // Refresh the list
+                    }}
+                  />
+
+                  <div className="mt-5 sm:mt-4 sm:flex sm:flex-row-reverse">
+                    <button
+                      onClick={() => setShowUploadModal(false)}
+                      className="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 sm:mt-0 sm:w-auto sm:text-sm"
+                    >
+                      Done
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
 {/* Document Preview Modal */}
       {previewDocument && (
@@ -651,8 +718,8 @@ function DocumentListRow({
       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
         {formatDate(document.uploaded_at)}
       </td>
-      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 capitalize">
-        {document.uploaded_by}
+      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+        <span className="capitalize">{document.uploaded_by === 'broker' ? 'Broker' : 'Borrower'}</span>
       </td>
       <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
         <div className="flex items-center justify-end space-x-2">

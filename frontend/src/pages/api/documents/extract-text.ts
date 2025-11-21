@@ -114,10 +114,19 @@ export const POST: APIRoute = async ({ request }) => {
                 type: 'text',
                 text: `Analyze this document and extract both the full text and structured financial data.
 
+IMPORTANT - Document Type Classification:
+- For Canadian tax documents, identify the SPECIFIC type:
+  * "T4" - Statement of Remuneration Paid (employment income)
+  * "T4A" - Statement of Pension, Retirement, Annuity, and Other Income
+  * "NOA" - Notice of Assessment from CRA
+  * "tax_return" - Complete tax return (T1 General)
+- For bank statements, look for account numbers, transactions, balances
+- For pay stubs, look for employer name, gross pay, deductions, net pay
+
 Return your response in the following JSON format:
 {
   "full_text": "Complete text content of the document",
-  "document_type": "bank_statement | pay_stub | tax_return | mortgage_statement | other",
+  "document_type": "bank_statement | pay_stub | T4 | T4A | NOA | tax_return | employment_letter | mortgage_statement | credit_report | drivers_license | passport | other",
   "structured_data": {
     // For bank statements:
     "account_holder": "Name",

@@ -4,7 +4,8 @@ import { uploadDocument } from '../../lib/supabase/documents';
 
 interface UploadZoneProps {
   applicationId: string;
-  token: string;
+  uploadedBy?: 'borrower' | 'broker';
+  token?: string;
   onUploadComplete?: (document: any) => void;
 }
 
@@ -19,7 +20,12 @@ interface FileWithProgress {
 const ALLOWED_TYPES = ['application/pdf', 'image/jpeg', 'image/jpg', 'image/png'];
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
 
-export default function UploadZone({ applicationId, token, onUploadComplete }: UploadZoneProps) {
+export default function UploadZone({ 
+  applicationId, 
+  uploadedBy = 'borrower',
+  token,
+  onUploadComplete 
+}: UploadZoneProps) {
   const [files, setFiles] = useState<FileWithProgress[]>([]);
   const [isDragging, setIsDragging] = useState(false);
 
@@ -82,7 +88,12 @@ export default function UploadZone({ applicationId, token, onUploadComplete }: U
       }, 200);
 
       // Upload to API
-      const { data, error } = await uploadDocument(file, applicationId, 'borrower', token);
+      const { data, error } = await uploadDocument(
+        file, 
+        applicationId, 
+        uploadedBy, 
+        token || undefined // Only pass if exists
+      );
 
       clearInterval(progressInterval);
 
