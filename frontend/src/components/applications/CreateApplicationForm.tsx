@@ -200,7 +200,7 @@ const newApplication = await createApplication({
   loan_amount: formData.loanAmount,
   down_payment: formData.downPayment,
   loan_purpose: formData.loanPurpose as any,
-  status: 'draft',
+  status: 'pending',
 });
 
       // Create primary borrower

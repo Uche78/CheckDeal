@@ -181,6 +181,15 @@ export async function updateApplicationStatus(
     throw new Error('Not authenticated');
   }
 
+  // First, get the current application to log the old status
+  const { data: currentApp } = await supabase
+    .from('applications')
+    .select('status')
+    .eq('id', id)
+    .eq('broker_id', broker.id)
+    .single();
+
+  // Update the status
   const { data, error } = await supabase
     .from('applications')
     .update({
@@ -196,16 +205,18 @@ export async function updateApplicationStatus(
     console.error('Error updating application status:', error);
     throw error;
   }
-// ✅ Log activity
+
+  // ✅ Log activity
   await logActivity(
     id,
     'status_changed',
-    `Status changed from ${currentApp?.status} to ${status}`,
+    `Status changed from ${currentApp?.status || 'unknown'} to ${status}`,
     { old_status: currentApp?.status, new_status: status }
   );
 
   return data;
 }
+
 
 /**
  * Soft delete an application

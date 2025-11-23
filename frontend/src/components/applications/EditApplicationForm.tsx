@@ -223,9 +223,9 @@ export default function EditApplicationForm({ applicationId }: Props) {
 
       const fullAddress = `${formData.propertyAddress}, ${formData.city}, ${formData.province} ${formData.postalCode}`;
       const fullName = `${formData.firstName.trim()} ${formData.lastName.trim()}`;
-      const downPaymentPercentage = formData.purchasePrice > 0 
-        ? (formData.downPayment / formData.purchasePrice) * 100 
-        : 0;
+     // const downPaymentPercentage = formData.purchasePrice > 0 
+     // ? (formData.downPayment / formData.purchasePrice) * 100 
+     // : 0;
 
       // Update application
       await updateApplication(applicationId, {
@@ -235,7 +235,6 @@ export default function EditApplicationForm({ applicationId }: Props) {
         loan_amount: formData.loanAmount,
         down_payment: formData.downPayment,
         loan_purpose: formData.loanPurpose,
-        down_payment_percentage: downPaymentPercentage,
       });
 
       // Update primary borrower

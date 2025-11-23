@@ -332,19 +332,18 @@ const handleChangeStatus = () => {
                 View Documents
               </button>
 
-              <a 
+              <button 
                 href={`/applications/${application.id}/edit`}
-                className="w-full btn bg-white text-gray-700 hover:bg-gray-50 border border-gray-300"
-              >
+                className="w-full px-4 py-2 text-sm font-medium text-white bg-gray-600">
                 Edit Application
-              </a>
+              </button>
+
               {primaryBorrower?.email && (
-                <a 
+              <button 
                   href={`mailto:${primaryBorrower.email}`}
-                  className="w-full btn bg-white text-gray-700 hover:bg-gray-50 border border-gray-300"
-                >
+                  className="w-full px-4 py-2 text-sm font-medium text-white bg-green-600">
                   Contact Applicant
-                </a>
+              </button>
               )}
               <button 
                 onClick={handleDelete}

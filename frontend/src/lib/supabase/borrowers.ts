@@ -1,5 +1,6 @@
 import { supabase } from './client';
 import { getCurrentBroker } from './brokers';
+import { logActivity } from './activity';
 import type { Borrower, BorrowerInsert, BorrowerUpdate } from '../types/database';
 
 /**
