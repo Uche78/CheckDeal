@@ -253,3 +253,97 @@ export interface UploadToken {
 
 export type UploadTokenInsert = Omit<UploadToken, 'id' | 'created_at' | 'is_used' | 'used_at' | 'uploads_count'>;
 export type UploadTokenUpdate = Partial<Omit<UploadToken, 'id' | 'token' | 'application_id'>>;
+
+// ============================================
+// ANALYSIS RESULTS TYPES
+// ============================================
+
+export type AnalysisSection = 'income_employment' | 'property' | 'borrower_details' | 'assets_liabilities' | 'overall_summary';
+
+export interface AnalysisResult {
+  id: string;
+  application_id: string;
+  section: AnalysisSection;
+  
+  // Analysis results
+  pros: string[] | null;
+  cons: string[] | null;
+  recommendations: string[] | null;
+  key_metrics: Record<string, any> | null;
+  
+  // Risk assessment
+  risk_score: number | null;  // 0-100
+  risk_level: string | null;  // "low", "medium", "high"
+  approval_likelihood: number | null;  // 0-100
+  critical_issues: string[] | null;
+  missing_documents: string[] | null;
+  
+  // Metadata
+  ai_model: string | null;
+  prompt_version: string | null;
+  processing_time_ms: number | null;
+  
+  // Timestamps
+  analyzed_at: string | null;
+  created_at: string | null;
+  updated_at: string | null;
+}
+
+export type AnalysisResultInsert = Omit
+  AnalysisResult, 
+  'id' | 'created_at' | 'updated_at'
+>;
+
+export type AnalysisResultUpdate = Partial
+  Omit<AnalysisResult, 'id' | 'application_id' | 'section' | 'created_at'>
+>;
+
+// Section-specific metric types (from prompts.ts)
+export interface IncomeMetrics {
+  gross_annual_income: number;
+  employment_type: 'salaried' | 'hourly' | 'commission' | 'self-employed' | 'mixed';
+  employment_tenure_years: number;
+  income_stability: 'stable' | 'variable' | 'concerning';
+  gds_ratio: number | null;
+  tds_ratio: number | null;
+  stress_test_qualifying_income: number | null;
+  stress_test_status: 'pass' | 'fail' | 'unable_to_calculate';
+  stress_test_enabled?: boolean;  // Track if stress test was applied
+}
+
+export interface PropertyMetrics {
+  property_type: 'detached' | 'semi-detached' | 'townhouse' | 'condo' | 'other';
+  purchase_price: number;
+  appraised_value: number | null;
+  ltv_ratio: number;
+  price_vs_appraisal: 'at_value' | 'above_value' | 'below_value' | 'no_appraisal';
+  property_condition: 'excellent' | 'good' | 'fair' | 'poor' | 'unknown';
+  down_payment_percentage: number;
+  cmhc_required: boolean;
+}
+
+export interface BorrowerMetrics {
+  credit_score: number | null;
+  credit_rating: 'excellent' | 'good' | 'fair' | 'poor' | 'unknown';
+  adverse_credit_events: string[];
+  recent_inquiries_count: number;
+  years_in_canada: number | null;
+  marital_status_risk: 'none' | 'recent_divorce' | 'separation_pending';
+  overall_risk_level: 'low' | 'medium' | 'high';
+}
+
+export interface AssetsMetrics {
+  total_liquid_assets: number;
+  down_payment_available: number;
+  down_payment_source: 'savings' | 'gift' | 'sale_of_property' | 'rrsp' | 'mixed' | 'unknown';
+  gift_amount: number | null;
+  gift_properly_documented: boolean | null;
+  total_monthly_debts: number;
+  undisclosed_liabilities_suspected: boolean;
+  large_deposits_flagged: string[];
+  months_of_reserves: number;
+  debt_to_income_ratio: number | null;
+}
+
+// Union type for all metric types
+export type SectionMetrics = IncomeMetrics | PropertyMetrics | BorrowerMetrics | AssetsMetrics;

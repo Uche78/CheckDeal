@@ -1,6 +1,11 @@
 import { useState, useEffect } from 'react';
 import { getDocuments } from '../../lib/supabase/documents';
-import type { Document } from '../../lib/types/database';
+import { getAnalysisSummaryClient } from '../../lib/supabase/analysis-results';
+import AnalyzeButton from '../analysis/AnalyzeButton';
+import AnalysisStatus from '../analysis/AnalysisStatus';
+import AnalysisResults from '../analysis/AnalysisResults';
+import KeyMetrics from '../analysis/KeyMetrics';
+import type { Document, AnalysisResult } from '../../lib/types/database';
 
 interface AnalysisDashboardProps {
   applicationId: string;
@@ -10,9 +15,32 @@ export default function AnalysisDashboard({ applicationId }: AnalysisDashboardPr
   const [documents, setDocuments] = useState<Document[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string>('');
+  
+  // Analysis state
+  const [analysisResults, setAnalysisResults] = useState<{
+    income_employment: AnalysisResult | null;
+    property: AnalysisResult | null;
+    borrower_details: AnalysisResult | null;
+    assets_liabilities: AnalysisResult | null;
+    overall_summary: AnalysisResult | null;
+  }>({
+    income_employment: null,
+    property: null,
+    borrower_details: null,
+    assets_liabilities: null,
+    overall_summary: null,
+  });
+
+  const [statusMessage, setStatusMessage] = useState<{
+    type: 'success' | 'error' | null;
+    message: string;
+  }>({ type: null, message: '' });
+
+  const [stressTestEnabled, setStressTestEnabled] = useState(false);
 
   useEffect(() => {
     loadDocuments();
+    loadAnalysis();
   }, [applicationId]);
 
   const loadDocuments = async () => {
@@ -29,6 +57,13 @@ export default function AnalysisDashboard({ applicationId }: AnalysisDashboardPr
 
     setDocuments(data);
     setLoading(false);
+  };
+
+  const loadAnalysis = async () => {
+    const { data } = await getAnalysisSummaryClient(applicationId);
+    if (data) {
+      setAnalysisResults(data);
+    }
   };
 
   if (loading) {
@@ -114,6 +149,13 @@ export default function AnalysisDashboard({ applicationId }: AnalysisDashboardPr
 
   return (
     <div className="space-y-6">
+      {/* Status Messages */}
+      <AnalysisStatus
+        type={statusMessage.type}
+        message={statusMessage.message}
+        onDismiss={() => setStatusMessage({ type: null, message: '' })}
+      />
+
       {/* Overview Cards */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
         <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
@@ -169,6 +211,302 @@ export default function AnalysisDashboard({ applicationId }: AnalysisDashboardPr
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
               </svg>
             </div>
+          </div>
+        </div>
+      </div>
+
+      {/* AI Analysis by Category */}
+      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+        <h2 className="text-xl font-bold text-gray-900 mb-6">AI Analysis by Category</h2>
+        
+        <div className="space-y-6">
+          {/* Income & Employment Analysis */}
+          <div className="border border-gray-200 rounded-lg p-4">
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                <h3 className="text-lg font-semibold text-gray-900">Income & Employment</h3>
+                <p className="text-sm text-gray-600 mt-1">
+                  {categoryBreakdown['income_employment'] || 0} documents
+                </p>
+              </div>
+              <AnalyzeButton
+                applicationId={applicationId}
+                section="income_employment"
+                documentCount={categoryBreakdown['income_employment'] || 0}
+                hasExistingAnalysis={!!analysisResults.income_employment}
+                stressTestEnabled={stressTestEnabled}
+                onAnalysisComplete={() => {
+                  setStatusMessage({
+                    type: 'success',
+                    message: 'Income & Employment analysis completed successfully!'
+                  });
+                  loadAnalysis();
+                }}
+                onAnalysisError={(error) => {
+                  setStatusMessage({ type: 'error', message: error });
+                }}
+              />
+            </div>
+            
+            {analysisResults.income_employment && (
+              <div className="mt-4 pt-4 border-t border-gray-200">
+                <div className="grid grid-cols-3 gap-4 mb-4">
+                  <div className="text-center p-3 bg-gray-50 rounded-lg">
+                    <p className="text-xs text-gray-600">Risk Score</p>
+                    <p className="text-2xl font-bold text-gray-900">
+                      {analysisResults.income_employment.risk_score}
+                    </p>
+                  </div>
+                  <div className="text-center p-3 bg-gray-50 rounded-lg">
+                    <p className="text-xs text-gray-600">Risk Level</p>
+                    <p className={`text-lg font-semibold capitalize ${
+                      analysisResults.income_employment.risk_level === 'low' ? 'text-green-600' :
+                      analysisResults.income_employment.risk_level === 'medium' ? 'text-yellow-600' :
+                      'text-red-600'
+                    }`}>
+                      {analysisResults.income_employment.risk_level}
+                    </p>
+                  </div>
+                  <div className="text-center p-3 bg-gray-50 rounded-lg">
+                    <p className="text-xs text-gray-600">Approval Likelihood</p>
+                    <p className="text-2xl font-bold text-gray-900">
+                      {analysisResults.income_employment.approval_likelihood}%
+                    </p>
+                  </div>
+                </div>
+                <p className="text-sm text-gray-600 mb-4">
+                  Analysis completed {new Date(analysisResults.income_employment.analyzed_at || '').toLocaleString()}
+                </p>
+                
+                <KeyMetrics 
+                  section="income_employment" 
+                  metrics={analysisResults.income_employment.key_metrics} 
+                />
+                
+                <div className="mt-6">
+                  <AnalysisResults
+                    analysis={analysisResults.income_employment}
+                    sectionName="Income & Employment"
+                  />
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Property Analysis */}
+          <div className="border border-gray-200 rounded-lg p-4">
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                <h3 className="text-lg font-semibold text-gray-900">Property</h3>
+                <p className="text-sm text-gray-600 mt-1">
+                  {categoryBreakdown['property'] || 0} documents
+                </p>
+              </div>
+              <AnalyzeButton
+                applicationId={applicationId}
+                section="property"
+                documentCount={categoryBreakdown['property'] || 0}
+                hasExistingAnalysis={!!analysisResults.property}
+                onAnalysisComplete={() => {
+                  setStatusMessage({
+                    type: 'success',
+                    message: 'Property analysis completed successfully!'
+                  });
+                  loadAnalysis();
+                }}
+                onAnalysisError={(error) => {
+                  setStatusMessage({ type: 'error', message: error });
+                }}
+              />
+            </div>
+            
+            {analysisResults.property && (
+              <div className="mt-4 pt-4 border-t border-gray-200">
+                <div className="grid grid-cols-3 gap-4 mb-4">
+                  <div className="text-center p-3 bg-gray-50 rounded-lg">
+                    <p className="text-xs text-gray-600">Risk Score</p>
+                    <p className="text-2xl font-bold text-gray-900">
+                      {analysisResults.property.risk_score}
+                    </p>
+                  </div>
+                  <div className="text-center p-3 bg-gray-50 rounded-lg">
+                    <p className="text-xs text-gray-600">Risk Level</p>
+                    <p className={`text-lg font-semibold capitalize ${
+                      analysisResults.property.risk_level === 'low' ? 'text-green-600' :
+                      analysisResults.property.risk_level === 'medium' ? 'text-yellow-600' :
+                      'text-red-600'
+                    }`}>
+                      {analysisResults.property.risk_level}
+                    </p>
+                  </div>
+                  <div className="text-center p-3 bg-gray-50 rounded-lg">
+                    <p className="text-xs text-gray-600">Approval Likelihood</p>
+                    <p className="text-2xl font-bold text-gray-900">
+                      {analysisResults.property.approval_likelihood}%
+                    </p>
+                  </div>
+                </div>
+                <p className="text-sm text-gray-600 mb-4">
+                  Analysis completed {new Date(analysisResults.property.analyzed_at || '').toLocaleString()}
+                </p>
+                
+                <KeyMetrics 
+                  section="property" 
+                  metrics={analysisResults.property.key_metrics} 
+                />
+                
+                <div className="mt-6">
+                  <AnalysisResults
+                    analysis={analysisResults.property}
+                    sectionName="Property"
+                  />
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Borrower Details Analysis */}
+          <div className="border border-gray-200 rounded-lg p-4">
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                <h3 className="text-lg font-semibold text-gray-900">Borrower Details</h3>
+                <p className="text-sm text-gray-600 mt-1">
+                  {categoryBreakdown['borrower_details'] || 0} documents
+                </p>
+              </div>
+              <AnalyzeButton
+                applicationId={applicationId}
+                section="borrower_details"
+                documentCount={categoryBreakdown['borrower_details'] || 0}
+                hasExistingAnalysis={!!analysisResults.borrower_details}
+                onAnalysisComplete={() => {
+                  setStatusMessage({
+                    type: 'success',
+                    message: 'Borrower Details analysis completed successfully!'
+                  });
+                  loadAnalysis();
+                }}
+                onAnalysisError={(error) => {
+                  setStatusMessage({ type: 'error', message: error });
+                }}
+              />
+            </div>
+            
+            {analysisResults.borrower_details && (
+              <div className="mt-4 pt-4 border-t border-gray-200">
+                <div className="grid grid-cols-3 gap-4 mb-4">
+                  <div className="text-center p-3 bg-gray-50 rounded-lg">
+                    <p className="text-xs text-gray-600">Risk Score</p>
+                    <p className="text-2xl font-bold text-gray-900">
+                      {analysisResults.borrower_details.risk_score}
+                    </p>
+                  </div>
+                  <div className="text-center p-3 bg-gray-50 rounded-lg">
+                    <p className="text-xs text-gray-600">Risk Level</p>
+                    <p className={`text-lg font-semibold capitalize ${
+                      analysisResults.borrower_details.risk_level === 'low' ? 'text-green-600' :
+                      analysisResults.borrower_details.risk_level === 'medium' ? 'text-yellow-600' :
+                      'text-red-600'
+                    }`}>
+                      {analysisResults.borrower_details.risk_level}
+                    </p>
+                  </div>
+                  <div className="text-center p-3 bg-gray-50 rounded-lg">
+                    <p className="text-xs text-gray-600">Approval Likelihood</p>
+                    <p className="text-2xl font-bold text-gray-900">
+                      {analysisResults.borrower_details.approval_likelihood}%
+                    </p>
+                  </div>
+                </div>
+                <p className="text-sm text-gray-600 mb-4">
+                  Analysis completed {new Date(analysisResults.borrower_details.analyzed_at || '').toLocaleString()}
+                </p>
+                
+                <KeyMetrics 
+                  section="borrower_details" 
+                  metrics={analysisResults.borrower_details.key_metrics} 
+                />
+                
+                <div className="mt-6">
+                  <AnalysisResults
+                    analysis={analysisResults.borrower_details}
+                    sectionName="Borrower Details"
+                  />
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Assets & Liabilities Analysis */}
+          <div className="border border-gray-200 rounded-lg p-4">
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                <h3 className="text-lg font-semibold text-gray-900">Assets & Liabilities</h3>
+                <p className="text-sm text-gray-600 mt-1">
+                  {categoryBreakdown['assets_liabilities'] || 0} documents
+                </p>
+              </div>
+              <AnalyzeButton
+                applicationId={applicationId}
+                section="assets_liabilities"
+                documentCount={categoryBreakdown['assets_liabilities'] || 0}
+                hasExistingAnalysis={!!analysisResults.assets_liabilities}
+                onAnalysisComplete={() => {
+                  setStatusMessage({
+                    type: 'success',
+                    message: 'Assets & Liabilities analysis completed successfully!'
+                  });
+                  loadAnalysis();
+                }}
+                onAnalysisError={(error) => {
+                  setStatusMessage({ type: 'error', message: error });
+                }}
+              />
+            </div>
+            
+            {analysisResults.assets_liabilities && (
+              <div className="mt-4 pt-4 border-t border-gray-200">
+                <div className="grid grid-cols-3 gap-4 mb-4">
+                  <div className="text-center p-3 bg-gray-50 rounded-lg">
+                    <p className="text-xs text-gray-600">Risk Score</p>
+                    <p className="text-2xl font-bold text-gray-900">
+                      {analysisResults.assets_liabilities.risk_score}
+                    </p>
+                  </div>
+                  <div className="text-center p-3 bg-gray-50 rounded-lg">
+                    <p className="text-xs text-gray-600">Risk Level</p>
+                    <p className={`text-lg font-semibold capitalize ${
+                      analysisResults.assets_liabilities.risk_level === 'low' ? 'text-green-600' :
+                      analysisResults.assets_liabilities.risk_level === 'medium' ? 'text-yellow-600' :
+                      'text-red-600'
+                    }`}>
+                      {analysisResults.assets_liabilities.risk_level}
+                    </p>
+                  </div>
+                  <div className="text-center p-3 bg-gray-50 rounded-lg">
+                    <p className="text-xs text-gray-600">Approval Likelihood</p>
+                    <p className="text-2xl font-bold text-gray-900">
+                      {analysisResults.assets_liabilities.approval_likelihood}%
+                    </p>
+                  </div>
+                </div>
+                <p className="text-sm text-gray-600 mb-4">
+                  Analysis completed {new Date(analysisResults.assets_liabilities.analyzed_at || '').toLocaleString()}
+                </p>
+                
+                <KeyMetrics 
+                  section="assets_liabilities" 
+                  metrics={analysisResults.assets_liabilities.key_metrics} 
+                />
+                
+                <div className="mt-6">
+                  <AnalysisResults
+                    analysis={analysisResults.assets_liabilities}
+                    sectionName="Assets & Liabilities"
+                  />
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </div>
