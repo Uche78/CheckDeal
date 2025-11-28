@@ -142,7 +142,8 @@ export default function AnalysisDashboard({ applicationId }: AnalysisDashboardPr
     (completeness.filter(c => c.complete).length / completeness.length) * 100
   );
 
-  // Recent activity
+
+// Recent activity
   const recentDocuments = [...documents]
     .sort((a, b) => new Date(b.uploaded_at).getTime() - new Date(a.uploaded_at).getTime())
     .slice(0, 5);
@@ -636,7 +637,7 @@ export default function AnalysisDashboard({ applicationId }: AnalysisDashboardPr
         </div>
       </div>
 
-      {/* Recent Activity */}
+      {/* Recent Activity
       <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
         <h3 className="text-lg font-semibold text-gray-900 mb-4">Recent Activity</h3>
         <div className="space-y-3">
@@ -670,7 +671,7 @@ export default function AnalysisDashboard({ applicationId }: AnalysisDashboardPr
             </div>
           ))}
         </div>
-      </div>
+      </div>*/}
     </div>
   );
 }
