@@ -1,144 +1,203 @@
 /**
- * Example: Income Analyzer with PII Redaction
+ * PII Redaction Utility
  * 
- * This shows how to integrate PII redaction into analyzers.
- * Apply the same pattern to property-analyzer, borrower-analyzer, and assets-analyzer.
+ * Redacts personally identifiable information (PII) from text before sending to AI.
+ * Protects: SSN, SIN, emails, phones, names, addresses, account numbers
  */
 
-import Anthropic from '@anthropic-ai/sdk';
-import type { SupabaseClient } from '@supabase/supabase-js';
-import { getIncomePrompt } from './prompts';
-import { redactPII, getPIISummary, validateRedaction } from '../utils/pii-redaction';
-
-// Fetch income-related documents
-async function fetchIncomeDocuments(supabase: SupabaseClient, applicationId: string) {
-  const { data: documents, error } = await supabase
-    .from('documents')
-    .select('*')
-    .eq('application_id', applicationId)
-    .eq('category', 'income_employment')
-    .eq('status', 'analyzed');
-
-  if (error) {
-    console.error('Error fetching income documents:', error);
-    throw new Error('Failed to fetch income documents');
-  }
-
-  if (!documents || documents.length === 0) {
-    throw new Error('No income documents found');
-  }
-
-  return documents;
+// Types
+export interface RedactionMapping {
+  [key: string]: string;
 }
 
-// Fetch borrower information for name redaction
-async function fetchBorrowerInfo(supabase: SupabaseClient, applicationId: string) {
-  const { data: application, error: appError } = await supabase
-    .from('applications')
-    .select(`
-      *,
-      borrowers (
-        full_name,
-        email,
-        phone
-      )
-    `)
-    .eq('id', applicationId)
-    .single();
-
-  if (appError || !application) {
-    console.error('Error fetching application:', appError);
-    return { names: [], addresses: [] };
-  }
-
-  const names = application.borrowers?.map((b: any) => b.full_name).filter(Boolean) || [];
-  const addresses = application.property_address ? [application.property_address] : [];
-
-  return { names, addresses };
+export interface RedactionResult {
+  redactedText: string;
+  mapping: RedactionMapping;
+  detectedPII: {
+    ssn: number;
+    sin: number;
+    email: number;
+    phone: number;
+    name: number;
+    address: number;
+    account: number;
+  };
 }
 
-export async function analyzeIncome(
-  supabase: SupabaseClient,
-  applicationId: string,
-  stressTestEnabled: boolean
-) {
-  const startTime = Date.now();
+/**
+ * Main redaction function
+ * Redacts all PII from text and returns mapping for potential restoration
+ */
+export function redactPII(
+  text: string,
+  knownNames: string[] = [],
+  knownAddresses: string[] = []
+): RedactionResult {
+  let redactedText = text;
+  const mapping: RedactionMapping = {};
+  const detectedPII = {
+    ssn: 0,
+    sin: 0,
+    email: 0,
+    phone: 0,
+    name: 0,
+    address: 0,
+    account: 0
+  };
 
-  try {
-    // Step 1: Fetch documents
-    const documents = await fetchIncomeDocuments(supabase, applicationId);
+  // 1. Redact US SSN (XXX-XX-XXXX or XXXXXXXXX)
+  const ssnPattern = /\b\d{3}-?\d{2}-?\d{4}\b/g;
+  const ssns = text.match(ssnPattern) || [];
+  ssns.forEach((ssn, index) => {
+    const placeholder = `[SSN_${index + 1}]`;
+    mapping[placeholder] = ssn;
+    redactedText = redactedText.replace(ssn, placeholder);
+    detectedPII.ssn++;
+  });
 
-    // Step 2: Fetch borrower info for redaction
-    const { names, addresses } = await fetchBorrowerInfo(supabase, applicationId);
+  // 2. Redact Canadian SIN (XXX-XXX-XXX or XXX XXX XXX)
+  const sinPattern = /\b\d{3}[-\s]?\d{3}[-\s]?\d{3}\b/g;
+  const sins = text.match(sinPattern) || [];
+  sins.forEach((sin, index) => {
+    const placeholder = `[SIN_${index + 1}]`;
+    mapping[placeholder] = sin;
+    redactedText = redactedText.replace(sin, placeholder);
+    detectedPII.sin++;
+  });
 
-    // Step 3: Combine extracted text from all documents
-    const combinedText = documents
-      .map(doc => doc.extracted_text || '')
-      .filter(text => text.length > 0)
-      .join('\n\n---\n\n');
+  // 3. Redact email addresses
+  const emailPattern = /\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b/g;
+  const emails = text.match(emailPattern) || [];
+  emails.forEach((email, index) => {
+    const placeholder = `[EMAIL_${index + 1}]`;
+    mapping[placeholder] = email;
+    redactedText = redactedText.replace(email, placeholder);
+    detectedPII.email++;
+  });
 
-    if (!combinedText) {
-      throw new Error('No text extracted from income documents');
-    }
-
-    // Step 4: Redact PII BEFORE sending to Claude
-    console.log('🔒 Redacting PII from income documents...');
-    const redactionResult = redactPII(combinedText, names, addresses);
-    
-    // Log what was redacted (for audit trail)
-    console.log(`📊 PII Redaction Summary: ${getPIISummary(redactionResult)}`);
-    
-    // Validate redaction worked
-    const validation = validateRedaction(redactionResult.redactedText);
-    if (!validation.isClean) {
-      console.warn('⚠️  Redaction warnings:', validation.warnings);
-    }
-
-    // Step 5: Get analysis prompt
-    const prompt = getIncomePrompt(redactionResult.redactedText, stressTestEnabled);
-
-    // Step 6: Call Claude API with REDACTED text
-    const anthropic = new Anthropic({
-      apiKey: import.meta.env.PUBLIC_ANTHROPIC_API_KEY,
+  // 4. Redact phone numbers (various formats)
+  const phonePatterns = [
+    /\b\d{3}[-.\s]?\d{3}[-.\s]?\d{4}\b/g, // 416-555-1234
+    /\(\d{3}\)\s?\d{3}[-.\s]?\d{4}/g,     // (416) 555-1234
+    /\b1[-.\s]?\d{3}[-.\s]?\d{3}[-.\s]?\d{4}\b/g // 1-416-555-1234
+  ];
+  
+  phonePatterns.forEach(pattern => {
+    const phones = text.match(pattern) || [];
+    phones.forEach((phone, index) => {
+      const placeholder = `[PHONE_${detectedPII.phone + index + 1}]`;
+      mapping[placeholder] = phone;
+      redactedText = redactedText.replace(phone, placeholder);
     });
+    detectedPII.phone += phones.length;
+  });
 
-    console.log('🤖 Sending REDACTED text to Claude for analysis...');
-    const message = await anthropic.messages.create({
-      model: 'claude-sonnet-4-20250514',
-      max_tokens: 4000,
-      messages: [
-        {
-          role: 'user',
-          content: prompt,
-        },
-      ],
-    });
+  // 5. Redact known borrower names
+  knownNames.forEach((name, index) => {
+    if (name && name.trim()) {
+      const placeholder = `[BORROWER_${index + 1}]`;
+      mapping[placeholder] = name;
+      // Case-insensitive replacement
+      const regex = new RegExp(name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi');
+      redactedText = redactedText.replace(regex, placeholder);
+      detectedPII.name++;
+    }
+  });
 
-    // Step 7: Parse response
-    const responseText = message.content[0].type === 'text' 
-      ? message.content[0].text 
-      : '';
+  // 6. Redact known addresses
+  knownAddresses.forEach((address, index) => {
+    if (address && address.trim()) {
+      const placeholder = `[ADDRESS_${index + 1}]`;
+      mapping[placeholder] = address;
+      // Case-insensitive replacement
+      const regex = new RegExp(address.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi');
+      redactedText = redactedText.replace(regex, placeholder);
+      detectedPII.address++;
+    }
+  });
 
-    // Remove markdown code blocks if present
-    const cleanedResponse = responseText
-      .replace(/```json\n?/g, '')
-      .replace(/```\n?/g, '')
-      .trim();
+  // 7. Redact common street address patterns (fallback)
+  const addressPattern = /\b\d+\s+[A-Z][a-z]+(\s+[A-Z][a-z]+)*\s+(Street|St|Avenue|Ave|Road|Rd|Drive|Dr|Lane|Ln|Boulevard|Blvd|Court|Ct|Way)\b/gi;
+  const addresses = text.match(addressPattern) || [];
+  addresses.forEach((address, index) => {
+    const placeholder = `[ADDRESS_${knownAddresses.length + index + 1}]`;
+    if (!Object.values(mapping).includes(address)) {
+      mapping[placeholder] = address;
+      redactedText = redactedText.replace(address, placeholder);
+      detectedPII.address++;
+    }
+  });
 
-    const analysisData = JSON.parse(cleanedResponse);
+  // 8. Redact account numbers (various patterns)
+  const accountPattern = /\b(?:Account|Acct|A\/C)[\s#:]*\d{4,}\b/gi;
+  const accounts = text.match(accountPattern) || [];
+  accounts.forEach((account, index) => {
+    const placeholder = `[ACCOUNT_${index + 1}]`;
+    mapping[placeholder] = account;
+    redactedText = redactedText.replace(account, placeholder);
+    detectedPII.account++;
+  });
 
-    // Step 8: Add processing metadata
-    const processingTime = Date.now() - startTime;
+  return {
+    redactedText,
+    mapping,
+    detectedPII
+  };
+}
 
-    return {
-      ...analysisData,
-      processing_time_ms: processingTime,
-      pii_redacted: true, // Flag that PII was redacted
-      pii_summary: getPIISummary(redactionResult), // Audit trail
-    };
+/**
+ * Restore PII from redacted text (use sparingly and with caution)
+ */
+export function restorePII(redactedText: string, mapping: RedactionMapping): string {
+  let restoredText = redactedText;
+  
+  Object.entries(mapping).forEach(([placeholder, original]) => {
+    restoredText = restoredText.replace(new RegExp(placeholder, 'g'), original);
+  });
+  
+  return restoredText;
+}
 
-  } catch (error: any) {
-    console.error('❌ Error in income analysis:', error);
-    throw new Error(`Income analysis failed: ${error.message}`);
+/**
+ * Get human-readable summary of PII detected
+ */
+export function getPIISummary(result: RedactionResult): string {
+  const items: string[] = [];
+  
+  if (result.detectedPII.ssn > 0) items.push(`${result.detectedPII.ssn} SSN`);
+  if (result.detectedPII.sin > 0) items.push(`${result.detectedPII.sin} SIN`);
+  if (result.detectedPII.email > 0) items.push(`${result.detectedPII.email} email${result.detectedPII.email > 1 ? 's' : ''}`);
+  if (result.detectedPII.phone > 0) items.push(`${result.detectedPII.phone} phone${result.detectedPII.phone > 1 ? 's' : ''}`);
+  if (result.detectedPII.name > 0) items.push(`${result.detectedPII.name} name${result.detectedPII.name > 1 ? 's' : ''}`);
+  if (result.detectedPII.address > 0) items.push(`${result.detectedPII.address} address${result.detectedPII.address > 1 ? 'es' : ''}`);
+  if (result.detectedPII.account > 0) items.push(`${result.detectedPII.account} account${result.detectedPII.account > 1 ? 's' : ''}`);
+  
+  if (items.length === 0) return 'No PII detected';
+  
+  return `Detected and redacted: ${items.join(', ')}`;
+}
+
+/**
+ * Validate that redaction was successful
+ */
+export function validateRedaction(text: string): { isClean: boolean; warnings: string[] } {
+  const warnings: string[] = [];
+  
+  // Check for common PII patterns that might have been missed
+  if (/\b\d{3}-\d{2}-\d{4}\b/.test(text)) {
+    warnings.push('Potential SSN found');
   }
+  
+  if (/\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b/.test(text)) {
+    warnings.push('Potential email address found');
+  }
+  
+  if (/\(\d{3}\)\s?\d{3}-\d{4}/.test(text)) {
+    warnings.push('Potential phone number found');
+  }
+  
+  return {
+    isClean: warnings.length === 0,
+    warnings
+  };
 }

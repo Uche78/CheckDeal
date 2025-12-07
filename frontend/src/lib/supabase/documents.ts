@@ -5,8 +5,8 @@ import { supabase } from '../supabase-client';
  * Upload a document file
  */
 export async function uploadDocument(
-  file: File,
   applicationId: string,
+  file: File,
   uploadedBy: 'broker' | 'borrower' = 'broker',
   token?: string // Add token parameter
 ): Promise<{ data: Document | null; error: Error | null }> {

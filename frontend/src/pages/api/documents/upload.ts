@@ -34,10 +34,37 @@ export const POST: APIRoute = async ({ request }) => {
       });
     }
 
-    // Validate file type
-    if (!ALLOWED_TYPES.includes(file.type)) {
+    // Validate file has a name
+    if (!file.name) {
       return new Response(JSON.stringify({ 
-        error: 'Invalid file type. Only PDF, JPG, and PNG files are allowed.' 
+        error: 'File must have a name' 
+      }), {
+        status: 400,
+        headers: { 'Content-Type': 'application/json' }
+      });
+    }
+
+    // Validate file type - check both MIME type and extension for better compatibility
+    const fileExtension = file.name?.toLowerCase().split('.').pop() || '';
+    const allowedExtensions = ['pdf', 'jpg', 'jpeg', 'png'];
+    
+    const isValidMimeType = ALLOWED_TYPES.includes(file.type);
+    const isValidExtension = fileExtension && allowedExtensions.includes(fileExtension);
+    
+    // Log for debugging
+    console.log('📄 File validation:', {
+      name: file.name,
+      type: file.type,
+      extension: fileExtension,
+      isValidMimeType,
+      isValidExtension
+    });
+    
+    // Accept if either MIME type OR extension is valid
+    if (!isValidMimeType && !isValidExtension) {
+      return new Response(JSON.stringify({ 
+        error: 'Invalid file type. Only PDF, JPG, and PNG files are allowed.',
+        details: `File type: ${file.type}, Extension: ${fileExtension}`
       }), {
         status: 400,
         headers: { 'Content-Type': 'application/json' }
@@ -102,7 +129,7 @@ export const POST: APIRoute = async ({ request }) => {
     // Generate unique filename
     const timestamp = Date.now();
     const randomString = Math.random().toString(36).substring(2, 15);
-    const fileExt = file.name.split('.').pop();
+    const fileExt = file.name?.split('.').pop() || 'pdf';
     const fileName = `${timestamp}-${randomString}.${fileExt}`;
     const filePath = `${applicationId}/${fileName}`;
 
@@ -164,26 +191,26 @@ export const POST: APIRoute = async ({ request }) => {
     }
 
     // If borrower upload with token, increment upload count
-if (token) {
-  // First get the current count
-  const { data: currentToken } = await supabase
-    .from('upload_tokens')
-    .select('uploads_count')
-    .eq('token', token)
-    .single();
+    if (token) {
+      // First get the current count
+      const { data: currentToken } = await supabase
+        .from('upload_tokens')
+        .select('uploads_count')
+        .eq('token', token)
+        .single();
 
-  if (currentToken) {
-    await supabase
-      .from('upload_tokens')
-      .update({ 
-        uploads_count: currentToken.uploads_count + 1,
-        used_at: new Date().toISOString()
-      })
-      .eq('token', token);
-  }
-}
+      if (currentToken) {
+        await supabase
+          .from('upload_tokens')
+          .update({ 
+            uploads_count: currentToken.uploads_count + 1,
+            used_at: new Date().toISOString()
+          })
+          .eq('token', token);
+      }
+    }
 
-// Trigger text extraction in the background (don't wait for it)
+    // Trigger text extraction in the background (don't wait for it)
     fetch(`${new URL(request.url).origin}/api/documents/extract-text`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },

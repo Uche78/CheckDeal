@@ -254,7 +254,7 @@ export default function DocumentsList({ applicationId }: DocumentsListProps) {
         </nav>
       </div>
 
-      {/* Upload Documents Button */}
+      {/* Upload Documents Button
       <div className="mb-4">
         <button
           onClick={() => setShowUploadModal(true)}
@@ -265,7 +265,7 @@ export default function DocumentsList({ applicationId }: DocumentsListProps) {
           </svg>
           Upload Documents
         </button>
-      </div>
+      </div>*/}
 
       {/* Document Type Filter */}
       <div className="flex items-center justify-between">
