@@ -509,20 +509,44 @@ export default function ApplicationDetails({ applicationId }: Props) {
 
           {/* Documents Tab Sidebar */}
           {activeTab === 'documents' && (
-            <div className="card">
-              <div className="card-header">
-                <h3 className="text-lg font-semibold text-gray-900">Upload Document</h3>
+            <>
+              {/* Generate Upload Link Button */}
+              <div className="card mb-6">
+                <div className="card-header">
+                  <h3 className="text-lg font-semibold text-gray-900">Send to Borrower</h3>
+                </div>
+                <div className="card-body">
+                  <p className="text-sm text-gray-600 mb-4">
+                    Generate a secure link for the borrower to upload documents directly.
+                  </p>
+                  <a
+                    href={`/applications/${application.id}/upload-link`}
+                    className="w-full inline-flex items-center justify-center px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors gap-2"
+                  >
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
+                    </svg>
+                    Generate Upload Link
+                  </a>
+                </div>
               </div>
-              <div className="card-body">
-                <DocumentUploadSidebar 
-                  applicationId={applicationId}
-                  onUploadSuccess={() => {
-                    // Refresh the documents list when upload succeeds
-                    window.location.reload();
-                  }}
-                />
+
+              {/* Upload Document */}
+              <div className="card">
+                <div className="card-header">
+                  <h3 className="text-lg font-semibold text-gray-900">Upload Document</h3>
+                </div>
+                <div className="card-body">
+                  <DocumentUploadSidebar 
+                    applicationId={applicationId}
+                    onUploadSuccess={() => {
+                      // Refresh the documents list when upload succeeds
+                      window.location.reload();
+                    }}
+                  />
+                </div>
               </div>
-            </div>
+            </>
           )}
 
           {/* Contact Tab Sidebar */}

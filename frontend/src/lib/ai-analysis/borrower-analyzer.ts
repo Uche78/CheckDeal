@@ -37,7 +37,7 @@ async function callClaudeAPI(
 
   try {
     // Get Claude API key from environment
-    const apiKey = import.meta.env.PUBLIC_ANTHROPIC_API_KEY;
+    const apiKey = import.meta.env.ANTHROPIC_API_KEY;
     
     if (!apiKey) {
       throw new Error('ANTHROPIC_API_KEY not found in environment variables');

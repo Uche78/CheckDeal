@@ -8,18 +8,26 @@ import type {
 
 interface KeyMetricsProps {
   section: AnalysisSection;
-  metrics: IncomeMetrics | PropertyMetrics | BorrowerMetrics | AssetsMetrics;
+  keyMetrics: IncomeMetrics | PropertyMetrics | BorrowerMetrics | AssetsMetrics;
 }
 
-export default function KeyMetrics({ section, metrics }: KeyMetricsProps) {
-  // Helper function to format currency
-  const formatCurrency = (value: number | null) => {
-    if (value === null) return 'N/A';
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
+export default function KeyMetrics({ section, keyMetrics }: KeyMetricsProps) {
+  // Add these helper functions at the top
+  const formatNumber = (value: any): string => {
+    if (value === null || value === undefined || isNaN(value)) {
+      return '0.00';
+    }
+    return Number(value).toFixed(2);
+  };
+
+  const formatCurrency = (value: any): string => {
+    if (value === null || value === undefined || isNaN(value)) {
+      return '$0.00';
+    }
+    return '$' + Number(value).toLocaleString('en-US', { 
       minimumFractionDigits: 2,
-    }).format(value);
+      maximumFractionDigits: 2 
+    });
   };
 
   // Helper function to format percentage
@@ -32,13 +40,13 @@ export default function KeyMetrics({ section, metrics }: KeyMetricsProps) {
   const renderMetrics = () => {
     switch (section) {
       case 'income_employment':
-        return renderIncomeMetrics(metrics as IncomeMetrics);
+        return renderIncomeMetrics(keyMetrics as IncomeMetrics);
       case 'property':
-        return renderPropertyMetrics(metrics as PropertyMetrics);
+        return renderPropertyMetrics(keyMetrics as PropertyMetrics);
       case 'borrower_details':
-        return renderBorrowerMetrics(metrics as BorrowerMetrics);
+        return renderBorrowerMetrics(keyMetrics as BorrowerMetrics);
       case 'assets_liabilities':
-        return renderAssetsMetrics(metrics as AssetsMetrics);
+        return renderAssetsMetrics();
       default:
         return null;
     }
@@ -232,102 +240,62 @@ export default function KeyMetrics({ section, metrics }: KeyMetricsProps) {
     </div>
   );
 
-  const renderAssetsMetrics = (m: AssetsMetrics) => (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-      <MetricCard
-        label="Total Liquid Assets"
-        value={formatCurrency(m.total_liquid_assets)}
-        icon="💰"
-      />
-      <MetricCard
-        label="Down Payment Available"
-        value={formatCurrency(m.down_payment_available)}
-        icon="💵"
-      />
-      <MetricCard
-        label="Down Payment Source"
-        value={
-          m.down_payment_source === 'savings' ? 'Savings' :
-          m.down_payment_source === 'gift' ? 'Gift' :
-          m.down_payment_source === 'sale_of_property' ? 'Property Sale' :
-          m.down_payment_source === 'rrsp' ? 'RRSP' :
-          m.down_payment_source === 'investment' ? 'Investment' :
-          'Unknown'
-        }
-        icon={m.down_payment_source === 'savings' ? '🏦' : '🎁'}
-      />
-      <MetricCard
-        label="Total Monthly Debts"
-        value={formatCurrency(m.total_monthly_debts)}
-        icon="💳"
-      />
-      <MetricCard
-        label="Debt-to-Income Ratio"
-        value={formatPercent(m.debt_to_income_ratio)}
-        icon="📊"
-        status={
-          m.debt_to_income_ratio !== null
-            ? m.debt_to_income_ratio <= 36 ? 'good' : m.debt_to_income_ratio <= 43 ? 'warning' : 'error'
-            : undefined
-        }
-      />
-      <MetricCard
-        label="Months of Reserves"
-        value={m.months_of_reserves.toFixed(1)}
-        icon="🛡️"
-        status={m.months_of_reserves >= 3 ? 'good' : m.months_of_reserves >= 1.5 ? 'warning' : 'error'}
-      />
-      {m.down_payment_source === 'gift' && (
-        <MetricCard
-          label="Gift Documentation"
-          value={
-            m.gift_properly_documented === true ? 'Complete' :
-            m.gift_properly_documented === false ? 'Incomplete' :
-            'Unknown'
-          }
-          icon={m.gift_properly_documented === true ? '✅' : '❌'}
-          status={m.gift_properly_documented === true ? 'good' : 'error'}
-        />
-      )}
-      {m.gift_amount !== null && m.gift_amount > 0 && (
-        <MetricCard
-          label="Gift Amount"
-          value={formatCurrency(m.gift_amount)}
-          icon="🎁"
-        />
-      )}
-      {m.large_deposits_flagged.length > 0 && (
-        <div className="col-span-full">
-          <div className="bg-orange-50 border border-orange-200 rounded-lg p-4">
-            <h5 className="text-sm font-semibold text-orange-900 mb-2">
-              Large Deposits Flagged ({m.large_deposits_flagged.length})
-            </h5>
-            <ul className="space-y-1">
-              {m.large_deposits_flagged.map((deposit, index) => (
-                <li key={index} className="text-sm text-orange-800 flex items-center">
-                  <span className="mr-2">•</span>
-                  {deposit}
-                </li>
-              ))}
-            </ul>
-          </div>
+  const renderAssetsMetrics = () => {
+    const metrics = keyMetrics as any;
+
+    return (
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="bg-blue-50 rounded-lg p-4">
+          <p className="text-xs text-blue-600 font-medium uppercase mb-1">Total Assets</p>
+          <p className="text-2xl font-bold text-blue-900">
+            {formatCurrency(metrics?.total_assets)}
+          </p>
         </div>
-      )}
-      {m.undisclosed_liabilities_suspected && (
-        <div className="col-span-full">
-          <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-            <p className="text-sm text-red-900 font-semibold">
-              ⚠️ Potential undisclosed liabilities detected - requires verification
+        <div className="bg-red-50 rounded-lg p-4">
+          <p className="text-xs text-red-600 font-medium uppercase mb-1">Total Liabilities</p>
+          <p className="text-2xl font-bold text-red-900">
+            {formatCurrency(metrics?.total_liabilities)}
+          </p>
+        </div>
+        <div className="bg-green-50 rounded-lg p-4">
+          <p className="text-xs text-green-600 font-medium uppercase mb-1">Net Worth</p>
+          <p className="text-2xl font-bold text-green-900">
+            {formatCurrency((metrics?.total_assets || 0) - (metrics?.total_liabilities || 0))}
+          </p>
+        </div>
+        
+        {metrics?.total_down_payment !== null && metrics?.total_down_payment !== undefined && (
+          <div className="bg-purple-50 rounded-lg p-4">
+            <p className="text-xs text-purple-600 font-medium uppercase mb-1">Down Payment Verified</p>
+            <p className="text-2xl font-bold text-purple-900">
+              {formatCurrency(metrics.total_down_payment)}
             </p>
           </div>
-        </div>
-      )}
-    </div>
-  );
+        )}
+        
+        {metrics?.liquid_assets !== null && metrics?.liquid_assets !== undefined && (
+          <div className="bg-cyan-50 rounded-lg p-4">
+            <p className="text-xs text-cyan-600 font-medium uppercase mb-1">Liquid Assets</p>
+            <p className="text-2xl font-bold text-cyan-900">
+              {formatCurrency(metrics.liquid_assets)}
+            </p>
+          </div>
+        )}
+        
+        {metrics?.debt_service_ratio !== null && metrics?.debt_service_ratio !== undefined && (
+          <div className="bg-orange-50 rounded-lg p-4">
+            <p className="text-xs text-orange-600 font-medium uppercase mb-1">Debt Service Ratio</p>
+            <p className="text-2xl font-bold text-orange-900">
+              {formatNumber(metrics.debt_service_ratio)}%
+            </p>
+          </div>
+        )}
+      </div>
+    );
+  };
 
   return (
-    <div className="mt-4 pt-4 border-t border-gray-200">
-      <h4 className="text-sm font-semibold text-gray-900 mb-4">Key Metrics</h4>
+    <div className="space-y-4">
       {renderMetrics()}
     </div>
   );
