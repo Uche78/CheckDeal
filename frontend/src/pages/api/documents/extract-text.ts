@@ -1,6 +1,7 @@
 import type { APIRoute } from 'astro';
 import { createClient } from '@supabase/supabase-js';
 import Anthropic from '@anthropic-ai/sdk';
+import { redactPII, getPIISummary, validateRedaction } from '../../../lib/utils/pii-redaction';
 
 const supabaseUrl = import.meta.env.PUBLIC_SUPABASE_URL;
 const supabaseServiceKey = import.meta.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -61,11 +62,34 @@ export const POST: APIRoute = async ({ request }) => {
     let documentType = null;
     let documentCategory = 'uncategorized';
 
-
     // Use Anthropic API for text extraction
     if (anthropicApiKey) {
       try {
         console.log('Starting Anthropic extraction for document:', document.file_name);
+        
+        // Fetch borrower information for PII redaction
+        console.log('🔒 Fetching borrower info for PII redaction...');
+        const { data: application } = await supabase
+          .from('applications')
+          .select(`
+            property_address,
+            borrowers (
+              full_name,
+              email,
+              phone,
+              current_address
+            )
+          `)
+          .eq('id', document.application_id)
+          .single();
+
+        const borrowerNames = application?.borrowers?.map((b: any) => b.full_name).filter(Boolean) || [];
+        const addresses = [
+          application?.property_address,
+          ...(application?.borrowers?.map((b: any) => b.current_address) || [])
+        ].filter(Boolean);
+
+        console.log(`🔒 Found ${borrowerNames.length} borrower name(s) and ${addresses.length} address(es) for redaction`);
         
         const client = new Anthropic({ apiKey: anthropicApiKey });
         
@@ -114,6 +138,17 @@ export const POST: APIRoute = async ({ request }) => {
                 type: 'text',
                 text: `Analyze this document and extract both the full text and structured financial data.
 
+🔒 CRITICAL PRIVACY REQUIREMENT - READ CAREFULLY:
+You MUST protect personally identifiable information (PII). In your response:
+- Replace ALL names with [NAME_1], [NAME_2], etc.
+- Replace ALL SSN/SIN numbers with [SSN_1], [SSN_2], etc.
+- Replace ALL email addresses with [EMAIL_1], [EMAIL_2], etc.
+- Replace ALL phone numbers with [PHONE_1], [PHONE_2], etc.
+- Replace ALL street addresses with [ADDRESS_1], [ADDRESS_2], etc.
+- Replace ALL account numbers with [ACCOUNT_1], [ACCOUNT_2], etc.
+- Keep ONLY financial amounts, dates, and transaction descriptions
+- This is for privacy compliance - DO NOT include any real PII in your response
+
 IMPORTANT - Document Type Classification:
 - For Canadian tax documents, identify the SPECIFIC type:
   * "T4" - Statement of Remuneration Paid (employment income)
@@ -125,12 +160,12 @@ IMPORTANT - Document Type Classification:
 
 Return your response in the following JSON format:
 {
-  "full_text": "Complete text content of the document",
+  "full_text": "Complete text content with PII replaced by placeholders",
   "document_type": "bank_statement | pay_stub | T4 | T4A | NOA | tax_return | employment_letter | mortgage_statement | credit_report | drivers_license | passport | other",
   "structured_data": {
-    // For bank statements:
-    "account_holder": "Name",
-    "account_number": "Last 4 digits only",
+    // For bank statements (use [NAME] and [ACCOUNT] placeholders):
+    "account_holder": "[NAME_1]",
+    "account_number": "****1234",
     "statement_period": {
       "start_date": "YYYY-MM-DD",
       "end_date": "YYYY-MM-DD"
@@ -142,15 +177,15 @@ Return your response in the following JSON format:
     "large_transactions": [
       {
         "date": "YYYY-MM-DD",
-        "description": "Transaction description",
+        "description": "Transaction description (no account numbers or names)",
         "amount": 0.00,
         "type": "credit | debit"
       }
     ],
     
-    // For pay stubs:
-    "employee_name": "Name",
-    "employer": "Company name",
+    // For pay stubs (use [NAME] placeholders):
+    "employee_name": "[NAME_1]",
+    "employer": "[NAME_2]",
     "pay_period": {
       "start_date": "YYYY-MM-DD",
       "end_date": "YYYY-MM-DD"
@@ -164,7 +199,9 @@ Return your response in the following JSON format:
   }
 }
 
-IMPORTANT:
+REMEMBER: 
+- NO real names, emails, phones, or addresses in the response
+- Use placeholders like [NAME_1], [EMAIL_1], [PHONE_1], [ADDRESS_1]
 - For large_transactions, include ANY transaction over $500
 - Use null for any fields that cannot be found
 - For dates, use YYYY-MM-DD format or null if not found
@@ -182,13 +219,29 @@ IMPORTANT:
           ? message.content[0].text 
           : '';
         
-      // Try to parse JSON response
+        // 🔒 REDACT PII from the AI response
+        console.log('🔒 Redacting PII from AI response...');
+        const redactionResult = redactPII(responseText, borrowerNames, addresses);
+        
+        const piiSummary = getPIISummary(redactionResult);
+        console.log(`📊 PII Redaction Summary: ${piiSummary}`);
+        
+        // Validate redaction worked
+        const validation = validateRedaction(redactionResult.redactedText);
+        if (!validation.isClean) {
+          console.warn('⚠️  Redaction validation warnings:', validation.warnings);
+        }
+        
+        // Use the redacted text for parsing
+        const redactedResponse = redactionResult.redactedText;
+        
+        // Try to parse JSON response
         try {
           // Remove markdown code blocks if present
-          let jsonText = responseText.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+          let jsonText = redactedResponse.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
           const parsed = JSON.parse(jsonText);
           
-          extractedText = parsed.full_text || responseText;
+          extractedText = parsed.full_text || redactedResponse;
           structuredData = parsed.structured_data || null;
           documentType = parsed.document_type || null;
           
@@ -220,11 +273,23 @@ IMPORTANT:
           console.log('Document type:', documentType);
           console.log('Document category:', documentCategory);
           console.log('Structured data:', JSON.stringify(structuredData, null, 2));
+          
+          // 🔐 Log PII redaction for audit trail
+          if (Object.values(redactionResult.detectedPII).some(count => count > 0)) {
+            const totalPII = Object.values(redactionResult.detectedPII).reduce((sum, count) => sum + count, 0);
+            console.log('🔐 PII Redaction Audit:', {
+              document_id,
+              application_id: document.application_id,
+              pii_detected: redactionResult.detectedPII,
+              total_items_redacted: totalPII,
+              timestamp: new Date().toISOString()
+            });
+          }
+          
         } catch (parseError) {
           console.error('JSON parsing failed, using raw text:', parseError);
-          extractedText = responseText;
+          extractedText = redactedResponse;
         }
-
 
       } catch (error) {
         console.error('Anthropic API error details:', error);
@@ -239,7 +304,11 @@ IMPORTANT:
     // Save extracted text, structured data, and classification to database
     const updateData: any = {
       extracted_text: extractedText,
-      extracted_data: structuredData,
+      extracted_data: structuredData ? {
+        ...structuredData,
+        pii_redacted: true,
+        redacted_at: new Date().toISOString()
+      } : structuredData,
       status: 'analyzed'
     };
     
@@ -256,7 +325,6 @@ IMPORTANT:
       .update(updateData)
       .eq('id', document_id);
 
-
     if (updateError) {
       return new Response(JSON.stringify({ 
         error: 'Failed to save extracted text',
@@ -267,11 +335,13 @@ IMPORTANT:
       });
     }
 
+    console.log('✅ Document analysis complete with PII redaction');
+
     return new Response(JSON.stringify({
       success: true,
       extracted_text: extractedText,
       structured_data: structuredData,
-      message: 'Text extraction completed'
+      message: 'Text extraction completed with PII redaction'
     }), {
       status: 200,
       headers: { 'Content-Type': 'application/json' }

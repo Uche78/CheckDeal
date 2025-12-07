@@ -510,23 +510,32 @@ export default function ApplicationDetails({ applicationId }: Props) {
           {/* Documents Tab Sidebar */}
           {activeTab === 'documents' && (
             <>
-              {/* Generate Upload Link Button */}
+              {/* Upload Links Management */}
               <div className="card mb-6">
                 <div className="card-header">
-                  <h3 className="text-lg font-semibold text-gray-900">Send to Borrower</h3>
+                  <h3 className="text-lg font-semibold text-gray-900">Upload Links</h3>
                 </div>
-                <div className="card-body">
-                  <p className="text-sm text-gray-600 mb-4">
-                    Generate a secure link for the borrower to upload documents directly.
+                <div className="card-body space-y-3">
+                  <p className="text-sm text-gray-600">
+                    Generate secure links for borrowers to upload documents.
                   </p>
                   <a
                     href={`/applications/${application.id}/upload-link`}
                     className="w-full inline-flex items-center justify-center px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors gap-2"
                   >
                     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
                     </svg>
-                    Generate Upload Link
+                    Generate New Link
+                  </a>
+                  <a
+                    href={`/applications/${application.id}/upload-links`}
+                    className="w-full inline-flex items-center justify-center px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors gap-2"
+                  >
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                    </svg>
+                    Manage All Links
                   </a>
                 </div>
               </div>

@@ -12,6 +12,14 @@ interface KeyMetricsProps {
 }
 
 export default function KeyMetrics({ section, keyMetrics }: KeyMetricsProps) {
+  // Safety check - don't render if no metrics
+  if (!keyMetrics) {
+    return (
+      <div className="text-center py-8 text-gray-500">
+        <p>No metrics available yet. Run analysis to see key metrics.</p>
+      </div>
+    );
+  }
   // Add these helper functions at the top
   const formatNumber = (value: any): string => {
     if (value === null || value === undefined || isNaN(value)) {
